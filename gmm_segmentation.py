@@ -45,7 +45,7 @@ def usage():
     print("Incorrect usage. Example:\npython gmm_segmentation.py image_filepath num_components num_iterations")
 
 
-def execute_segmentation(filepath, components, iterations, init_variance=np.float64(1/255)):
+def execute_segmentation(filepath, components, iterations, init_variance=np.float64(10/255)):
     """
     :param filepath: path to input grayscale image
     :param components: number of gaussian models to fit to the image
@@ -54,12 +54,11 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     :return:
     """
 
-    image = np.float64(cv2.imread(filepath))
-    image = image / np.float64(255)  # normalize image
+    image = np.divide(np.float64(cv2.imread(filepath)), np.float64(255))  # read image from disk. normalize.
     rows, cols, chans = image.shape
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
-    show_image((1, 1, 1), "Input Image", image, width=15, height=10, vmin=np.min(image), vmax=np.max(image))
+    #show_image((1, 1, 1), "Input Image", image, width=15, height=10, vmin=np.min(image), vmax=np.max(image))
 
     # select initial means from random locations in image
     means = np.zeros(components)
@@ -72,28 +71,35 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     variances = np.float64(np.ones(components)) * init_variance  # initial variance is 1/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
-    logLikelyhood = np.zeros(iterations)
+    #logLikelyhood = np.zeros(iterations)
 
     for i in range(iterations):
+        print("ITERATION", i)
+        print("E STEP")
         # Expectation Step - see page 438 of Pattern Recognition and Machine Learning
         responsibilities = np.zeros((rows, cols, components))
         denominator = np.zeros((rows, cols))  # denominator of responsibilities equation 9.13
         for k in range(components):
-            denominator = denominator + weights[k] * sp.stats.norm.pdf(image, means[k], stdevs[k])
+            denominator = np.add(denominator, np.multiply(weights[k], sp.stats.norm.pdf(image, means[k], stdevs[k])))
         for k in range(components):
-            responsibilities[:, :, k] = np.divide(weights[k] * sp.stats.norm.pdf(image, means[k], stdevs[k]),
-                                                  denominator)  # compute responsibilities eqn 9.13
-
+            responsibilities[:, :, k] = np.divide(np.multiply(weights[k], sp.stats.norm.pdf(image, means[k], stdevs[k])), denominator)  # compute responsibilities eqn 9.13
+        print("denominator", denominator)
+        print("responsibilities", responsibilities)
         # Maximization Step - see page 439 of Pattern Recognition and Machine Learning
+        print("M STEP")
         numPoints = np.sum(np.sum(responsibilities, axis=0), axis=0)  # compute Nk
         for k in range(components):
-            means[k] = np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0) / numPoints[k]
-            variances[k] = np.sum(np.sum(np.multiply(responsibilities[:, :, k], image - means[k]), axis=0), axis=0) / \
-                           numPoints[k]
+            print("COMPONENT", k)
+            means[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0), numPoints[k])
+            print("mean", means[k])
+            variances[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.subtract(image, means[k])), axis=0), axis=0), numPoints[k])
+            print("variance", variances[k])
             stdevs[k] = np.sqrt(variances[k])
-            weights[k] = numPoints[k] / (rows * cols)
+            print("stdev", stdevs[k])
+            weights[k] = np.divide(numPoints[k], (rows * cols))
+            print("weight", weights[k])
         # log likelyhood calculation
-        logLikelyhood[i] = np.sum(np.sum(np.log(denominator), axis=0), axis=0)
+        #logLikelyhood[i] = np.sum(np.sum(np.log(denominator), axis=0), axis=0)
 
         # Visualization
         segmentation_output = np.zeros((rows, cols))
@@ -107,7 +113,7 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
         # segmentation_output = cv2.morphologyEx(segmentation_output, cv2.MORPH_OPEN, kernel)
         show_image((1, 1, 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
                    vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
-        print("completed iteration", i, "with log likelyhood", logLikelyhood[i])
+        #print("completed iteration", i, "with log likelyhood", logLikelyhood[i])
     plt.show()
 
 
