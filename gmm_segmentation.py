@@ -45,37 +45,42 @@ def usage():
     print("Incorrect usage. Example:\npython gmm_segmentation.py image_filepath num_components num_iterations")
 
 
-def compute_likelihoods(intensities, weights_list, means_list, stdevs_list):
+def compute_responsibilities(intensities, weights_list, means_list, stdevs_list):
     """
-
+    implement equation 9.23 in expectation step
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
     :param weights_list: list of np.float64 weight values - one for each of K components
     :param means_list: list of np.float64 mean values - one for each of K components
     :param stdevs_list: list of np.float64 stdev values - one for each of K components
-    :return: NxMxK matrix with each layer being a likelihoods matrix
+    :return responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
+    :return totalLogLikelihood: log likelihood value for the state of the estimator at this iteration
     """
-    assert(len(weights_list) == len(means_list) == len(stdevs_list))
+
+    assert (len(weights_list) == len(means_list) == len(stdevs_list))
     K = len(weights_list)
     N, M = intensities.shape
-    likelihoods = np.zeros((N, M, K))
-    for k in range(K):
-        likelihoods[:, :, k] = np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
-    return likelihoods
 
-
-def compute_responsibilities(likelihoods):
-    """
-    implement equation 9.23 in expectation step
-    :param likelihoods: NxMxK matrix with each layer being a likelihoods matrix
-    """
-    N, M, K = likelihoods.shape
     responsibilities = np.zeros((N, M, K))
-    likelihoods_sum = np.sum(likelihoods, axis=2)  # compute denominator of responsibilities equation 9.23
-    print("likelIhoods_sum", likelihoods_sum)
+    log_likelihoods = np.zeros((N, M, K))
+
+    # numerator of equation 9.23 in log form for numerical stability
+    # compute NxMxK matrix with likelihood of each pixel belonging to each of K components
     for k in range(K):
-        responsibilities[:, :, k] = np.divide(likelihoods[:, :, k], likelihoods_sum)
-    print("responsibilities", responsibilities)
-    return responsibilities
+        log_likelihoods[:, :, k] = np.log(
+            np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k])))
+    # denominator of equation 9.23
+    log_likelihoods_max = np.max(log_likelihoods, axis=2)
+    # implement LogSumExp technique for probability summation
+    expsum = np.zeros((N, M))
+    for k in range(K):
+        expsum += np.exp(log_likelihoods[:, :, k] - log_likelihoods_max)
+    log_likelihoods_sum = log_likelihoods_max + np.log(expsum)
+    # implement probability division as log likelihood subtraction
+    for k in range(K):
+        responsibilities[:, :, k] = np.exp(np.subtract(log_likelihoods[:, :, k], log_likelihoods_sum))  # responsibilities will be in linear space
+    # total log likelihood
+    totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
+    return responsibilities, totalLogLikelihood
 
 
 def execute_segmentation(filepath, components, iterations, init_variance=np.float64(10/255)):
@@ -84,14 +89,13 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     :param components: number of gaussian models to fit to the image
     :param iterations: number of iterations of the expectation maximization algorithm
     :param init_variance: initial variance for each model
-    :return:
     """
     image = np.divide(np.float64(cv2.imread(filepath)), np.float64(255))  # read image from disk. normalize.
     rows, cols, chans = image.shape
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
-    #show_image((1, 1, 1), "Input Image", image, width=15, height=10, vmin=np.min(image), vmax=np.max(image))
 
+    # warning: random initialization means results will be different every time
     # select initial means from random locations in image
     means = np.zeros(components)
     for i in range(components):
@@ -103,43 +107,19 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     variances = np.float64(np.ones(components)) * init_variance  # initial variance is 1/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
-    #logLikelyhood = np.zeros(iterations)
+    totalLogLikelihoods = np.zeros(iterations)
 
     for i in range(iterations):
-        print("ITERATION", i)
-        print("E STEP")
         # Expectation Step - see page 438 of Pattern Recognition and Machine Learning
-        """
-        responsibilities = np.zeros((rows, cols, components))
-
-        component_likelyhoods_sum = np.zeros((rows, cols))
-        for k in range(components):
-            component_likelyhoods_sum = np.add(component_likelyhoods_sum, np.multiply(weights[k], sp.stats.norm.pdf(image, means[k], stdevs[k])))
-
-        # compute responsibilities = numerator of responsibilities equation 9.23
-        for k in range(components):
-            responsibilities[:, :, k] = np.divide(np.multiply(weights[k], sp.stats.norm.pdf(image, means[k], stdevs[k])), component_likelyhoods_sum)  # compute responsibilities eqn 9.13
-
-        print("component_likelyhoods_sum", component_likelyhoods_sum)
-        print("responsibilities", responsibilities)
-        """
-        responsibilities = compute_responsibilities(compute_likelihoods(image, weights, means, stdevs))
-
+        responsibilities, totalLogLikelihoods[i] = compute_responsibilities(image, weights, means, stdevs)
         # Maximization Step - see page 439 of Pattern Recognition and Machine Learning
-        print("M STEP")
         numPoints = np.sum(np.sum(responsibilities, axis=0), axis=0)  # compute Nk
         for k in range(components):
-            print("COMPONENT", k)
             means[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0), numPoints[k])
-            print("mean", means[k])
-            variances[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.subtract(image, means[k])), axis=0), axis=0), numPoints[k])
-            print("variance", variances[k])
+            differences_from_mean = np.subtract(image, means[k])
+            variances[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.square(differences_from_mean)), axis=0), axis=0), numPoints[k])
             stdevs[k] = np.sqrt(variances[k])
-            print("stdev", stdevs[k])
             weights[k] = np.divide(numPoints[k], (rows * cols))
-            print("weight", weights[k])
-        # log likelyhood calculation
-        #logLikelyhood[i] = np.sum(np.sum(np.log(denominator), axis=0), axis=0)
 
         # Visualization
         segmentation_output = np.zeros((rows, cols))
@@ -147,13 +127,9 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
         for r in range(rows):
             for c in range(cols):
                 segmentation_output[r, c] = means[segmentation_output_indices[r, c]]
-
-        # morphological ops to clean up noise
-        # kernel = np.ones((3, 3))
-        # segmentation_output = cv2.morphologyEx(segmentation_output, cv2.MORPH_OPEN, kernel)
-        show_image((1, 1, 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
-                   vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
-        #print("completed iteration", i, "with log likelyhood", logLikelyhood[i])
+        show_image((1, iterations, i + 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
+                   vmin=np.min(segmentation_output), vmax=np.max(segmentation_output), open_new_window=False)
+        print("ITERATION", i, "\n means", means, " \nstdevs", stdevs, "\nweights", weights, "log likelihood", totalLogLikelihoods[i])
     plt.show()
 
 
@@ -164,6 +140,7 @@ def main():
     filepath = sys.argv[1]
     components = int(sys.argv[2])
     iterations = int(sys.argv[3])
+    assert(components == 2)
     if not os.path.exists(filepath):
         usage()
         exit()
