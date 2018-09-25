@@ -127,20 +127,21 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
         for r in range(rows):
             for c in range(cols):
                 segmentation_output[r, c] = means[segmentation_output_indices[r, c]]
-        show_image((1, iterations, i + 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
+        show_image((1 + iterations // 4, 4, i + 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
                    vmin=np.min(segmentation_output), vmax=np.max(segmentation_output), open_new_window=False)
-        print("ITERATION", i, "\n means", means, " \nstdevs", stdevs, "\nweights", weights, "log likelihood", totalLogLikelihoods[i])
+        print("ITERATION", i, "\nmeans", means, " \nstdevs", stdevs, "\nweights", weights, "\nlog likelihood", totalLogLikelihoods[i])
     plt.show()
+    plt.close()
 
 
 def main():
+    print("WARNING: Due to random initialization, every run will produce slightly different results.")
     if len(sys.argv) != 4:
         usage()
         exit()
     filepath = sys.argv[1]
     components = int(sys.argv[2])
     iterations = int(sys.argv[3])
-    assert(components == 2)
     if not os.path.exists(filepath):
         usage()
         exit()
