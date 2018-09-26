@@ -146,7 +146,7 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
         means[i] = image[rand_row, rand_col]
 
     # initialize other state variables of the algorithm
-    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 1/255 - quite small
+    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
     totalLogLikelihoods = np.zeros(iterations)
