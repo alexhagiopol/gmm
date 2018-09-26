@@ -25,7 +25,6 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
     :param vmin: float min value to display in single layer image
     :param vmax: float max value to display in single layer image
     :param cmap: colormap for display of single layer images
-    :
     """
     if open_new_window:
         plt.figure(figsize=(height, width))
@@ -39,6 +38,48 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
     if open_new_window:
         plt.show()
         plt.close()
+
+
+def visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list):
+    """
+    :param image: ndarray with grayscale image
+    :param responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
+    :param i: current iteration index
+    :param iterations: total number of iterations
+    :param means_list: list of mean values, one for each component
+    :param stdevs_list: list of stdev values, one for each component
+    """
+    # create segmentation image by assigning to each pixel the mean value associated with the model with greatest prob
+    rows, cols, components = responsibilities.shape
+    segmentation_output = np.zeros((rows, cols))
+    segmentation_output_indices = responsibilities.argmax(axis=2)
+    for r in range(rows):
+        for c in range(cols):
+            segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
+
+    # Visualization 1: segmentation image
+    show_image((3, iterations, 1 + i),
+               "Segmentation Image " + str(i),
+               segmentation_output,
+               width=15,
+               height=10,
+               vmin=np.min(segmentation_output),
+               vmax=np.max(segmentation_output),
+               open_new_window=False)
+
+    # Visualization 2: Show distribution of pixel color values.
+    plt.subplot(3, iterations, 1 + iterations + i)
+    plt.title("Pixel Color Histogram", fontsize=10)
+    plt.hist(image.flatten(), bins=255)
+
+    # Visualization 3: Show Gussian curves of each model.
+    for k in range(components):
+        curve_points_input = np.linspace(0, 1, 100)
+        plt.subplot(3, iterations, 1 + 2*iterations + i)
+        plt.title("Gaussian Mixture Curves", fontsize=10)
+        plt.plot(curve_points_input,
+                 sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
+                 color=(means_list[k], means_list[k], means_list[k]))
 
 
 def usage():
@@ -95,7 +136,8 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
 
-    # warning: random initialization means results will be different every time
+    # TODO: remove this warning if/when I improve initialization
+    print("WARNING: Due to random initialization, every run will produce slightly different results.")
     # select initial means from random locations in image
     means = np.zeros(components)
     for i in range(components):
@@ -104,7 +146,7 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
         means[i] = image[rand_row, rand_col]
 
     # initialize other state variables of the algorithm
-    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 1/255 - quite small
+    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
     totalLogLikelihoods = np.zeros(iterations)
@@ -121,21 +163,20 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
             stdevs[k] = np.sqrt(variances[k])
             weights[k] = np.divide(numPoints[k], (rows * cols))
 
-        # Visualization
-        segmentation_output = np.zeros((rows, cols))
-        segmentation_output_indices = responsibilities.argmax(axis=2)
-        for r in range(rows):
-            for c in range(cols):
-                segmentation_output[r, c] = means[segmentation_output_indices[r, c]]
-        show_image((1 + iterations // 4, 4, i + 1), "Segmentation Image " + str(i), segmentation_output, width=15, height=10,
-                   vmin=np.min(segmentation_output), vmax=np.max(segmentation_output), open_new_window=False)
-        print("ITERATION", i, "\nmeans", means, " \nstdevs", stdevs, "\nweights", weights, "\nlog likelihood", totalLogLikelihoods[i])
+        # Print algorithm state.
+        print("ITERATION", i,
+              "\nmeans", means,
+              " \nstdevs", stdevs,
+              "\nweights", weights,
+              "\nlog likelihood", totalLogLikelihoods[i])
+        # visualize
+        visualize_algorithm_state(image, responsibilities, i, iterations, means, stdevs)
+
     plt.show()
-    plt.close()
 
 
 def main():
-    print("WARNING: Due to random initialization, every run will produce slightly different results.")
+    # process user input and exit if invalid
     if len(sys.argv) != 4:
         usage()
         exit()
@@ -145,19 +186,9 @@ def main():
     if not os.path.exists(filepath):
         usage()
         exit()
+    # main segmentation function that implements GMM
     execute_segmentation(filepath, components, iterations)
+
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
