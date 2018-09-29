@@ -40,7 +40,7 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
         plt.close()
 
 
-def visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list):
+def visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, total_log_likelihoods_list):
     """
     :param image: ndarray with grayscale image
     :param responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
@@ -57,29 +57,52 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         for c in range(cols):
             segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
 
+    plt.figure(0)
     # Visualization 1: segmentation image
     show_image((3, iterations, 1 + i),
-               "Segmentation Image " + str(i),
+               "Segmentation #" + str(i),
                segmentation_output,
-               width=15,
-               height=10,
                vmin=np.min(segmentation_output),
                vmax=np.max(segmentation_output),
                open_new_window=False)
 
     # Visualization 2: Show distribution of pixel color values.
     plt.subplot(3, iterations, 1 + iterations + i)
-    plt.title("Pixel Color Histogram", fontsize=10)
-    plt.hist(image.flatten(), bins=255)
+    plt.title("Pixel Value Histogram", fontsize=10)
+    plt.xlabel("Pixel Values")
+    plt.ylabel("# Occurrences")
+    plt.hist(image.flatten(), bins=128)
 
-    # Visualization 3: Show Gussian curves of each model.
+    # Visualization 3: Show Gaussian curves of each model.
     for k in range(components):
         curve_points_input = np.linspace(0, 1, 100)
         plt.subplot(3, iterations, 1 + 2*iterations + i)
         plt.title("Gaussian Mixture Curves", fontsize=10)
+        plt.xlabel("Pixel Values")
+        plt.ylabel("Probability")
         plt.plot(curve_points_input,
                  sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
                  color=(means_list[k], means_list[k], means_list[k]))
+
+    # Visualization 4: On final iteration, show un-segmented and final segmentation image on the final iteration
+    if i == iterations - 1:
+        plt.figure(1)
+        plt.title("Original Image")
+        plt.imshow(image, cmap='gray', vmin=np.min(image), vmax=np.max(segmentation_output))
+        plt.figure(2)
+        plt.title("Final Segmented Image")
+        plt.imshow(segmentation_output, cmap='gray', vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
+    # Visualization 5: On final iteration, show plot of total log likelihood
+        # TODO: Move log likelihood calculation to *after* M step so that I do not have to truncate the
+        # TODO: list when visualizing. This would be a cleaner fix for the problem that the first LL
+        # TODO: value does not apparently conform to the pattern of monotonic increase.
+        plt.figure(3)
+        plt.title("Total Log Likelihood")
+        plt.xlabel("Iteration")
+        plt.ylabel("Total Log Likelihood")
+        x = np.linspace(1, iterations - 1, iterations - 1)
+        plt.plot(x, total_log_likelihoods_list[1:], 'ro')
+        plt.xticks(x, x)
 
 
 def usage():
@@ -120,6 +143,9 @@ def compute_responsibilities(intensities, weights_list, means_list, stdevs_list)
     for k in range(K):
         responsibilities[:, :, k] = np.exp(np.subtract(log_likelihoods[:, :, k], log_likelihoods_sum))  # responsibilities will be in linear space
     # total log likelihood
+    # TODO: Refactor total log likelihood calculation because it should be done *after* M step not during E step.
+    # TODO: This means that the log likelihood for iteration 1 is really the log likelihood of iteration 0 and the
+    # TODO: log likelihood of iteration 0 needs to be thrown out.
     totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
     return responsibilities, totalLogLikelihood
 
@@ -136,24 +162,16 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
 
-    # TODO: remove this warning if/when I improve initialization
-    print("WARNING: Due to random initialization, every run will produce slightly different results.")
-    # select initial means from random locations in image
-    means = np.zeros(components)
-    for i in range(components):
-        rand_col = np.int((cols - 1) * np.random.rand(1))
-        rand_row = np.int((rows - 1) * np.random.rand(1))
-        means[i] = image[rand_row, rand_col]
-
-    # initialize other state variables of the algorithm
+    # initialize state variables of the algorithm
+    means = np.linspace(0, 1, components)  # assume component means are evenly spaced in pixel value domain
     variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
-    totalLogLikelihoods = np.zeros(iterations)
+    total_log_likelihoods = np.zeros(iterations)
 
     for i in range(iterations):
         # Expectation Step - see page 438 of Pattern Recognition and Machine Learning
-        responsibilities, totalLogLikelihoods[i] = compute_responsibilities(image, weights, means, stdevs)
+        responsibilities, total_log_likelihoods[i] = compute_responsibilities(image, weights, means, stdevs)
         # Maximization Step - see page 439 of Pattern Recognition and Machine Learning
         numPoints = np.sum(np.sum(responsibilities, axis=0), axis=0)  # compute Nk
         for k in range(components):
@@ -168,10 +186,9 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
               "\nmeans", means,
               " \nstdevs", stdevs,
               "\nweights", weights,
-              "\nlog likelihood", totalLogLikelihoods[i])
+              "\nlog likelihood", total_log_likelihoods[i])
         # visualize
-        visualize_algorithm_state(image, responsibilities, i, iterations, means, stdevs)
-
+        visualize_algorithm_state(image, responsibilities, i, iterations, means, stdevs, total_log_likelihoods)
     plt.show()
 
 
