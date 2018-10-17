@@ -7,6 +7,7 @@ import cv2
 import matplotlib as mpl
 mpl.use('TkAgg')  # hack around bug in matplotlib. see https://stackoverflow.com/questions/21784641/installation-issue-with-matplotlib-python
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mtick
 import numpy as np
 import scipy as sp
 import sys
@@ -67,19 +68,24 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
                open_new_window=False)
 
     # Visualization 2: Show distribution of pixel color values.
-    plt.subplot(3, iterations, 1 + iterations + i)
+    ax = plt.subplot(3, iterations, 1 + iterations + i)
     plt.title("Pixel Value Histogram", fontsize=10)
-    plt.xlabel("Pixel Values")
-    plt.ylabel("# Occurrences")
+    if i == 0:
+        plt.ylabel("# Occurrences")
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
     plt.hist(image.flatten(), bins=128)
 
     # Visualization 3: Show Gaussian curves of each model.
+    curve_points_input = np.linspace(0, 1, 1000)
     for k in range(components):
-        curve_points_input = np.linspace(0, 1, 100)
         plt.subplot(3, iterations, 1 + 2*iterations + i)
         plt.title("Gaussian Mixture Curves", fontsize=10)
         plt.xlabel("Pixel Values")
-        plt.ylabel("Probability")
+        if i == 0:
+            plt.ylabel("Probability")
+        #y_ticks = np.linspace(0, 30, 7)
+        #plt.yticks(y_ticks, y_ticks)
+        plt.ylim([0, 10])
         plt.plot(curve_points_input,
                  sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
                  color=(means_list[k], means_list[k], means_list[k]))
@@ -92,6 +98,7 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         plt.figure(2)
         plt.title("Final Segmented Image")
         plt.imshow(segmentation_output, cmap='gray', vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
+
     # Visualization 5: On final iteration, show plot of total log likelihood
         # TODO: Move log likelihood calculation to *after* M step so that I do not have to truncate the
         # TODO: list when visualizing. This would be a cleaner fix for the problem that the first LL
