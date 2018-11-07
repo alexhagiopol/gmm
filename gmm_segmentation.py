@@ -15,6 +15,17 @@ import os
 from scipy.stats import norm
 
 
+def initialize_expectation_maximization(components, iterations):
+    # initialize state variables of the algorithm
+    init_variance = np.float64(10 / 255)  # initialized as explained in GMM tutorial paper
+    means = np.linspace(0, 1, components)  # assume component means are evenly spaced in pixel value domain
+    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
+    stdevs = np.sqrt(variances)
+    weights = np.ones(components)
+    total_log_likelihoods = np.zeros(iterations)
+    return means, variances, stdevs, weights, total_log_likelihoods
+
+
 def show_image(location, title, img, width=15, height=3, open_new_window=True, vmin=-5000.0, vmax=5000.0, cmap='gray', fontsize=10):
     """
     Displays an image in a multi-image display window
@@ -58,6 +69,9 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         for c in range(cols):
             segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
 
+    '''
+    Visualizations 1, 2, and 3 are subplots of the same figure to show the evolution of the state of the algorithm.
+    '''
     plt.figure(0)
     # Visualization 1: segmentation image
     show_image((3, iterations, 1 + i),
@@ -83,27 +97,59 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         plt.xlabel("Pixel Values")
         if i == 0:
             plt.ylabel("Probability")
-        #y_ticks = np.linspace(0, 30, 7)
-        #plt.yticks(y_ticks, y_ticks)
         plt.ylim([0, 10])
         plt.plot(curve_points_input,
                  sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
                  color=(means_list[k], means_list[k], means_list[k]))
 
-    # Visualization 4: On final iteration, show un-segmented and final segmentation image on the final iteration
+    '''
+    Visualizations 4 and 5 created only on the final Expectation Maximization iteration to summarize the results.
+    '''
     if i == iterations - 1:
+        # Visualization 4: On final iteration, show un-segmented and final segmentation results on the final iteration
         plt.figure(1)
-        plt.title("Original Image")
+        plt.subplot(3, 2, 1)
+        plt.title("Original Image", fontsize=10)
         plt.imshow(image, cmap='gray', vmin=np.min(image), vmax=np.max(segmentation_output))
-        plt.figure(2)
-        plt.title("Final Segmented Image")
+
+        plt.subplot(3, 2, 2)
+        plt.title("Final Segmented Image After " + str(iterations) + " Iterations", fontsize=10)
         plt.imshow(segmentation_output, cmap='gray', vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
 
-    # Visualization 5: On final iteration, show plot of total log likelihood
+        plt.subplot(3, 2, 3)
+        plt.title("Pixel Value Histogram", fontsize=10)
+        plt.ylabel("# Occurrences")
+        ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
+        plt.hist(image.flatten(), bins=128)
+
+        plt.subplot(3, 2, 4)
+        plt.title("Pixel Value Histogram", fontsize=10)
+        ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
+        plt.hist(image.flatten(), bins=128)
+
+        plt.subplot(3, 2, 5)
+        plt.title("Initial Gaussian Mixture Curves", fontsize=10)
+        plt.xlabel("Pixel Values")
+        plt.ylabel("Probability")
+        init_means, init_variances, init_stdevs, init_weights, init_total_log_likelihoods = initialize_expectation_maximization(components, iterations)
+        for k in range(components):
+            plt.plot(curve_points_input,
+                     sp.stats.norm.pdf(curve_points_input, init_means[k], init_stdevs[k]),
+                     color=(init_means[k], init_means[k], init_means[k]))
+
+        plt.subplot(3, 2, 6)
+        plt.title("Final Gaussian Mixture Curves After " + str(iterations) + " Iterations", fontsize=10)
+        plt.xlabel("Pixel Values")
+        for k in range(components):
+            plt.plot(curve_points_input,
+                     sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
+                     color=(means_list[k], means_list[k], means_list[k]))
+
+        # Visualization 5: On final iteration, show plot of total log likelihood
         # TODO: Move log likelihood calculation to *after* M step so that I do not have to truncate the
         # TODO: list when visualizing. This would be a cleaner fix for the problem that the first LL
         # TODO: value does not apparently conform to the pattern of monotonic increase.
-        plt.figure(3)
+        plt.figure(2)
         plt.title("Total Log Likelihood")
         plt.xlabel("Iteration")
         plt.ylabel("Total Log Likelihood")
@@ -157,7 +203,7 @@ def compute_responsibilities(intensities, weights_list, means_list, stdevs_list)
     return responsibilities, totalLogLikelihood
 
 
-def execute_segmentation(filepath, components, iterations, init_variance=np.float64(10/255)):
+def execute_segmentation(filepath, components, iterations):
     """
     :param filepath: path to input grayscale image
     :param components: number of gaussian models to fit to the image
@@ -168,13 +214,7 @@ def execute_segmentation(filepath, components, iterations, init_variance=np.floa
     rows, cols, chans = image.shape
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
-
-    # initialize state variables of the algorithm
-    means = np.linspace(0, 1, components)  # assume component means are evenly spaced in pixel value domain
-    variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
-    stdevs = np.sqrt(variances)
-    weights = np.ones(components)
-    total_log_likelihoods = np.zeros(iterations)
+    means, variances, stdevs, weights, total_log_likelihoods = initialize_expectation_maximization(components, iterations)
 
     for i in range(iterations):
         # Expectation Step - see page 438 of Pattern Recognition and Machine Learning
