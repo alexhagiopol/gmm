@@ -2,9 +2,6 @@
 
 ### Installation
 
-Before cloning the project, be sure you have [Git LFS](https://git-lfs.github.com)
-installed to be able to clone the non-code files in this repo e.g. images.
-
     git clone https://github.com/alexhagiopol/gmm
     cd gmm
 
