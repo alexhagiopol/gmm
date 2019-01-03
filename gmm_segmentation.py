@@ -159,39 +159,59 @@ def usage():
     print("Incorrect usage. Example:\npython gmm_segmentation.py image_filepath num_components num_iterations")
 
 
-def compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list):
+def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
+    """
+    implement equations X.1 and X.2 with part of equation X.3 in numerically stable expectation step derived in paper
+    this function is used in both compute_log_likelihood_stable() and compute_expectation_responsibilities()
+    :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
+    :param weights_list: list of np.float64 weight values - one for each of K components
+    :param means_list: list of np.float64 mean values - one for each of K components
+    :param stdevs_list: list of np.float64 stdev values - one for each of K components
+    :return expsum: NxM matrix of sum of exp(P_nk - P_n_max)
+    :return P: result of equation X.1
+    :return P_max: result of equation X.2
+    """
     assert (len(weights_list) == len(means_list) == len(stdevs_list))
     K = len(weights_list)
     N, M = intensities.shape
-    log_likelihoods = np.zeros((N, M, K))
 
-    # numerator of equation 9.23 in log form for numerical stability
-    # compute NxMxK matrix with likelihood of each pixel belonging to each of K components
+    # implement equation X.1 derived in paper
+    P = np.zeros((N, M, K))
     for k in range(K):
-        log_likelihoods[:, :, k] = np.log(
-            np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k])))
-    # denominator of equation 9.23
-    log_likelihoods_max = np.max(log_likelihoods, axis=2)
+        P[:, :, k] = np.log(weights_list[k]) + np.log(sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
 
-    # implement LogSumExp technique for probability summation
+    # implement equation X.2 derived in paper
+    P_max = np.max(P, axis=2)
+
+    # implement expsum calculation used in equation X.3 derived in paper
     expsum = np.zeros((N, M))
     for k in range(K):
-        expsum += np.exp(log_likelihoods[:, :, k] - log_likelihoods_max)
-    log_likelihoods_sum = log_likelihoods_max + np.log(expsum)
+        expsum += np.exp(P[:, :, k] - P_max)
+    return expsum, P, P_max
 
-    totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
-    return totalLogLikelihood, log_likelihoods, log_likelihoods_sum
+
+def compute_log_likelihood_stable(intensities, weights_list, means_list, stdevs_list):
+    """
+    implement log likelihood calculation derived in paper
+    :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
+    :param weights_list: list of np.float64 weight values - one for each of K components
+    :param means_list: list of np.float64 mean values - one for each of K components
+    :param stdevs_list: list of np.float64 stdev values - one for each of K components
+    :return log_likelihood: scalar value
+    """
+    expsum, P, P_max = compute_expsum_stable(intensities, weights_list, means_list, stdevs_list)
+    ln_inner_sum = P_max + np.log(expsum)  # inner sum of log likelihood equation
+    return np.sum(np.sum(ln_inner_sum, axis=0), axis=0)  # outer sum of log likelihood equation
 
 
 def compute_expectation_responsibilities(intensities, weights_list, means_list, stdevs_list):
     """
-    implement equation 9.23 in expectation step
+    implement equations X.1 through X.3 in numerically stable expectation step derived in paper
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
     :param weights_list: list of np.float64 weight values - one for each of K components
     :param means_list: list of np.float64 mean values - one for each of K components
     :param stdevs_list: list of np.float64 stdev values - one for each of K components
     :return responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
-    :return totalLogLikelihood: log likelihood value for the state of the estimator at this iteration
     """
 
     assert (len(weights_list) == len(means_list) == len(stdevs_list))
@@ -199,26 +219,11 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
     N, M = intensities.shape
     ln_responsibilities = np.zeros((N, M, K))
 
-    '''
-    # OLD IMPLEMENTATION:
-    totalLogLikelihood, log_likelihoods, log_likelihoods_sum = compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list)
-    # implement probability division as log likelihood subtraction
-    for k in range(K):
-        responsibilities[:, :, k] = np.exp(np.subtract(log_likelihoods[:, :, k], log_likelihoods_sum))  # responsibilities will be in linear space
-    '''
+    # equations X.1 and X.2 of Expectation step implemented in compute_expsum_stable() due to commonality with
+    # log likelihood calculation
+    expsum, P, P_max = compute_expsum_stable(intensities, weights_list, means_list, stdevs_list)
 
-    # implement equation X.1 in paper
-    P = np.zeros((N, M, K))
-    for k in range(K):
-        P[:, :, k] = np.log(weights_list[k]) + np.log(sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
-
-    # implement equation X.2 in paper
-    P_max = np.max(P, axis=2)
-
-    # implement equation X.3 in paper
-    expsum = np.zeros((N, M))
-    for k in range(K):
-        expsum += np.exp(P[:, :, k] - P_max)
+    # implement equation X.3 derived in paper
     ln_expsum = np.log(expsum)
     for k in range(K):
         ln_responsibilities[:, :, k] = P[:, :, k] - (P_max + ln_expsum)
@@ -253,9 +258,8 @@ def execute_segmentation(filepath, components, iterations):
             variances_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.square(differences_from_mean)), axis=0), axis=0), numPoints[k])
             stdevs_list[k] = np.sqrt(variances_list[k])
             weights_list[k] = np.divide(numPoints[k], (rows * cols))
-        # 5. Log Likelihood Step - despite being done in Expectation Step, must be done again *after* maximization step
-        # to accurately represent the log likelihood for a complete iteration
-        total_log_likelihoods[i], dummy_1, dummy_2 = compute_log_likelihoods(image, weights_list, means_list, stdevs_list)
+        # 5. Log Likelihood Step
+        total_log_likelihoods[i] = compute_log_likelihood_stable(image, weights_list, means_list, stdevs_list)
         # Print algorithm state.
         print("ITERATION", i,
               "\nmeans", means_list,
