@@ -146,15 +146,12 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
                      color=(means_list[k], means_list[k], means_list[k]))
 
         # Visualization 5: On final iteration, show plot of total log likelihood
-        # TODO: Move log likelihood calculation to *after* M step so that I do not have to truncate the
-        # TODO: list when visualizing. This would be a cleaner fix for the problem that the first LL
-        # TODO: value does not apparently conform to the pattern of monotonic increase.
         plt.figure(2)
         plt.title("Total Log Likelihood")
         plt.xlabel("Iteration")
         plt.ylabel("Total Log Likelihood")
-        x = np.linspace(1, iterations - 1, iterations - 1)
-        plt.plot(x, total_log_likelihoods_list[1:], 'ro')
+        x = np.linspace(1, iterations, iterations)
+        plt.plot(x, total_log_likelihoods_list[:], 'ro')
         plt.xticks(x, x)
 
 
@@ -162,7 +159,28 @@ def usage():
     print("Incorrect usage. Example:\npython gmm_segmentation.py image_filepath num_components num_iterations")
 
 
-def compute_responsibilities(intensities, weights_list, means_list, stdevs_list):
+def compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list):
+    assert (len(weights_list) == len(means_list) == len(stdevs_list))
+    K = len(weights_list)
+    N, M = intensities.shape
+    log_likelihoods = np.zeros((N, M, K))
+    # numerator of equation 9.23 in log form for numerical stability
+    # compute NxMxK matrix with likelihood of each pixel belonging to each of K components
+    for k in range(K):
+        log_likelihoods[:, :, k] = np.log(
+            np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k])))
+    # denominator of equation 9.23
+    log_likelihoods_max = np.max(log_likelihoods, axis=2)
+    # implement LogSumExp technique for probability summation
+    expsum = np.zeros((N, M))
+    for k in range(K):
+        expsum += np.exp(log_likelihoods[:, :, k] - log_likelihoods_max)
+    log_likelihoods_sum = log_likelihoods_max + np.log(expsum)
+    totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
+    return totalLogLikelihood, log_likelihoods, log_likelihoods_sum
+
+
+def compute_expectation_responsibilities(intensities, weights_list, means_list, stdevs_list):
     """
     implement equation 9.23 in expectation step
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
@@ -176,31 +194,12 @@ def compute_responsibilities(intensities, weights_list, means_list, stdevs_list)
     assert (len(weights_list) == len(means_list) == len(stdevs_list))
     K = len(weights_list)
     N, M = intensities.shape
-
     responsibilities = np.zeros((N, M, K))
-    log_likelihoods = np.zeros((N, M, K))
-
-    # numerator of equation 9.23 in log form for numerical stability
-    # compute NxMxK matrix with likelihood of each pixel belonging to each of K components
-    for k in range(K):
-        log_likelihoods[:, :, k] = np.log(
-            np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k])))
-    # denominator of equation 9.23
-    log_likelihoods_max = np.max(log_likelihoods, axis=2)
-    # implement LogSumExp technique for probability summation
-    expsum = np.zeros((N, M))
-    for k in range(K):
-        expsum += np.exp(log_likelihoods[:, :, k] - log_likelihoods_max)
-    log_likelihoods_sum = log_likelihoods_max + np.log(expsum)
+    totalLogLikelihood, log_likelihoods, log_likelihoods_sum = compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list)
     # implement probability division as log likelihood subtraction
     for k in range(K):
         responsibilities[:, :, k] = np.exp(np.subtract(log_likelihoods[:, :, k], log_likelihoods_sum))  # responsibilities will be in linear space
-    # total log likelihood
-    # TODO: Refactor total log likelihood calculation because it should be done *after* M step not during E step.
-    # TODO: This means that the log likelihood for iteration 1 is really the log likelihood of iteration 0 and the
-    # TODO: log likelihood of iteration 0 needs to be thrown out.
-    totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
-    return responsibilities, totalLogLikelihood
+    return responsibilities
 
 
 def execute_segmentation(filepath, components, iterations):
@@ -210,32 +209,36 @@ def execute_segmentation(filepath, components, iterations):
     :param iterations: number of iterations of the expectation maximization algorithm
     :param init_variance: initial variance for each model
     """
+    # 1. Initialization Step
     image = np.divide(np.float64(cv2.imread(filepath)), np.float64(255))  # read image from disk. normalize.
     rows, cols, chans = image.shape
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
-    means, variances, stdevs, weights, total_log_likelihoods = initialize_expectation_maximization(components, iterations)
+    means_list, variances_list, stdevs_list, weights_list, total_log_likelihoods = initialize_expectation_maximization(components, iterations)
 
     for i in range(iterations):
-        # Expectation Step - see page 438 of Pattern Recognition and Machine Learning
-        responsibilities, total_log_likelihoods[i] = compute_responsibilities(image, weights, means, stdevs)
-        # Maximization Step - see page 439 of Pattern Recognition and Machine Learning
+        # 2. Expectation Step - see page 438 of Pattern Recognition and Machine Learning
+        responsibilities = compute_expectation_responsibilities(image, weights_list, means_list, stdevs_list)
+        # 3. Inference Step - (skipped until the end for speed; see visualize_algorithm_state()).
+        # 4. Maximization Step - see page 439 of Pattern Recognition and Machine Learning
         numPoints = np.sum(np.sum(responsibilities, axis=0), axis=0)  # compute Nk
         for k in range(components):
-            means[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0), numPoints[k])
-            differences_from_mean = np.subtract(image, means[k])
-            variances[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.square(differences_from_mean)), axis=0), axis=0), numPoints[k])
-            stdevs[k] = np.sqrt(variances[k])
-            weights[k] = np.divide(numPoints[k], (rows * cols))
-
+            means_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0), numPoints[k])
+            differences_from_mean = np.subtract(image, means_list[k])
+            variances_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.square(differences_from_mean)), axis=0), axis=0), numPoints[k])
+            stdevs_list[k] = np.sqrt(variances_list[k])
+            weights_list[k] = np.divide(numPoints[k], (rows * cols))
+        # 5. Log Likelihood Step - despite being done in Expectation Step, must be done again *after* maximization step
+        # to accurately represent the log likelihood for a complete iteration
+        total_log_likelihoods[i], dummy_1, dummy_2 = compute_log_likelihoods(image, weights_list, means_list, stdevs_list)
         # Print algorithm state.
         print("ITERATION", i,
-              "\nmeans", means,
-              " \nstdevs", stdevs,
-              "\nweights", weights,
+              "\nmeans", means_list,
+              " \nstdevs", stdevs_list,
+              "\nweights", weights_list,
               "\nlog likelihood", total_log_likelihoods[i])
         # visualize
-        visualize_algorithm_state(image, responsibilities, i, iterations, means, stdevs, total_log_likelihoods)
+        visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, total_log_likelihoods)
     plt.show()
 
 
