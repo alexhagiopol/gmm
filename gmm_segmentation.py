@@ -16,14 +16,24 @@ from scipy.stats import norm
 
 
 def initialize_expectation_maximization(components, iterations):
+    """
+    perform initialization step
+    :param components: number of components
+    :param iterations: number of iterations
+    :return: means: list of initial mean values
+    :return: variances: list of initial variance values
+    :return: stdevs: list of initial stdev values
+    :return: weights: list of initial weight values
+    :return: log_likelihoods: list of initial log_likelihood values
+    """
     # initialize state variables of the algorithm
     init_variance = np.float64(10 / 255)  # initialized as explained in GMM tutorial paper
     means = np.linspace(0, 1, components)  # assume component means are evenly spaced in pixel value domain
     variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
-    total_log_likelihoods = np.zeros(iterations)
-    return means, variances, stdevs, weights, total_log_likelihoods
+    log_likelihoods = np.zeros(iterations)
+    return means, variances, stdevs, weights, log_likelihoods
 
 
 def show_image(location, title, img, width=15, height=3, open_new_window=True, vmin=-5000.0, vmax=5000.0, cmap='gray', fontsize=10):
@@ -52,7 +62,7 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
         plt.close()
 
 
-def visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, total_log_likelihoods_list):
+def visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, log_likelihoods_list):
     """
     :param image: ndarray with grayscale image
     :param responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
@@ -131,7 +141,7 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         plt.title("Initial Gaussian Mixture Curves", fontsize=10)
         plt.xlabel("Pixel Values")
         plt.ylabel("Probability")
-        init_means, init_variances, init_stdevs, init_weights, init_total_log_likelihoods = initialize_expectation_maximization(components, iterations)
+        init_means, init_variances, init_stdevs, init_weights, init_log_likelihoods = initialize_expectation_maximization(components, iterations)
         for k in range(components):
             plt.plot(curve_points_input,
                      sp.stats.norm.pdf(curve_points_input, init_means[k], init_stdevs[k]),
@@ -151,7 +161,7 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         plt.xlabel("Iteration")
         plt.ylabel("Total Log Likelihood")
         x = np.linspace(1, iterations, iterations)
-        plt.plot(x, total_log_likelihoods_list[:], 'ro')
+        plt.plot(x, log_likelihoods_list[:], 'ro')
         plt.xticks(x, x)
 
 
@@ -244,7 +254,7 @@ def execute_segmentation(filepath, components, iterations):
     rows, cols, chans = image.shape
     print("Starting Gaussian Mixture Model segmentation for", filepath)
     image = image[:, :, 0]
-    means_list, variances_list, stdevs_list, weights_list, total_log_likelihoods = initialize_expectation_maximization(components, iterations)
+    means_list, variances_list, stdevs_list, weights_list, log_likelihoods = initialize_expectation_maximization(components, iterations)
 
     for i in range(iterations):
         # 2. Expectation Step - see page 438 of Pattern Recognition and Machine Learning
@@ -259,15 +269,15 @@ def execute_segmentation(filepath, components, iterations):
             stdevs_list[k] = np.sqrt(variances_list[k])
             weights_list[k] = np.divide(numPoints[k], (rows * cols))
         # 5. Log Likelihood Step
-        total_log_likelihoods[i] = compute_log_likelihood_stable(image, weights_list, means_list, stdevs_list)
+        log_likelihoods[i] = compute_log_likelihood_stable(image, weights_list, means_list, stdevs_list)
         # Print algorithm state.
         print("ITERATION", i,
               "\nmeans", means_list,
               "\nstdevs", stdevs_list,
               "\nweights", weights_list,
-              "\nlog likelihood", total_log_likelihoods[i])
+              "\nlog likelihood", log_likelihoods[i])
         # Visualize
-        visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, total_log_likelihoods)
+        visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, log_likelihoods)
     plt.show()
 
 
