@@ -164,6 +164,7 @@ def compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list):
     K = len(weights_list)
     N, M = intensities.shape
     log_likelihoods = np.zeros((N, M, K))
+
     # numerator of equation 9.23 in log form for numerical stability
     # compute NxMxK matrix with likelihood of each pixel belonging to each of K components
     for k in range(K):
@@ -171,11 +172,13 @@ def compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list):
             np.multiply(weights_list[k], sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k])))
     # denominator of equation 9.23
     log_likelihoods_max = np.max(log_likelihoods, axis=2)
+
     # implement LogSumExp technique for probability summation
     expsum = np.zeros((N, M))
     for k in range(K):
         expsum += np.exp(log_likelihoods[:, :, k] - log_likelihoods_max)
     log_likelihoods_sum = log_likelihoods_max + np.log(expsum)
+
     totalLogLikelihood = np.sum(np.sum(log_likelihoods_sum, axis=0), axis=0)
     return totalLogLikelihood, log_likelihoods, log_likelihoods_sum
 
@@ -194,11 +197,33 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
     assert (len(weights_list) == len(means_list) == len(stdevs_list))
     K = len(weights_list)
     N, M = intensities.shape
-    responsibilities = np.zeros((N, M, K))
+    ln_responsibilities = np.zeros((N, M, K))
+
+    '''
+    # OLD IMPLEMENTATION:
     totalLogLikelihood, log_likelihoods, log_likelihoods_sum = compute_log_likelihoods(intensities, weights_list, means_list, stdevs_list)
     # implement probability division as log likelihood subtraction
     for k in range(K):
         responsibilities[:, :, k] = np.exp(np.subtract(log_likelihoods[:, :, k], log_likelihoods_sum))  # responsibilities will be in linear space
+    '''
+
+    # implement equation X.1 in paper
+    P = np.zeros((N, M, K))
+    for k in range(K):
+        P[:, :, k] = np.log(weights_list[k]) + np.log(sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
+
+    # implement equation X.2 in paper
+    P_max = np.max(P, axis=2)
+
+    # implement equation X.3 in paper
+    expsum = np.zeros((N, M))
+    for k in range(K):
+        expsum += np.exp(P[:, :, k] - P_max)
+    ln_expsum = np.log(expsum)
+    for k in range(K):
+        ln_responsibilities[:, :, k] = P[:, :, k] - (P_max + ln_expsum)
+    # expotentiate to convert back to real number space
+    responsibilities = np.exp(ln_responsibilities)
     return responsibilities
 
 
@@ -234,10 +259,10 @@ def execute_segmentation(filepath, components, iterations):
         # Print algorithm state.
         print("ITERATION", i,
               "\nmeans", means_list,
-              " \nstdevs", stdevs_list,
+              "\nstdevs", stdevs_list,
               "\nweights", weights_list,
               "\nlog likelihood", total_log_likelihoods[i])
-        # visualize
+        # Visualize
         visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, total_log_likelihoods)
     plt.show()
 
