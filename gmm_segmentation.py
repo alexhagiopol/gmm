@@ -4,16 +4,50 @@ S. Russel and P. Norvig, Artificial Intelligence: A Modern Approach pp. 802 - 82
 C. Bishop, Pattern Recognition and Machine Learning pp. 423 - 459 (2011)
 A. Hagiopol, Gaussian Mixture Models and Expectation Maximization: A Hands-On Tutorial (2019)
 """
+import argparse
 import cv2
 import matplotlib as mpl
 mpl.use('TkAgg')  # hack around bug in matplotlib. see https://stackoverflow.com/questions/21784641/installation-issue-with-matplotlib-python
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
+import os
 import scipy as sp
 import sys
-import os
 from scipy.stats import norm
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(
+        description="Example implementation of Gaussian Mixture Models segmentation. "
+                    "Single image input: segment the image based on grayscale intensity. "
+                    "Pair of images input: segment the subtraction result. ")
+    parser.add_argument("--first-image",
+                        type=str,
+                        default=None,
+                        help="Path to image file. Must be specified.")
+    parser.add_argument("--second-image",
+                        type=str,
+                        default=None,
+                        help="Path to image file. May or may not be specified.")
+    parser.add_argument("--components",
+                        type=int,
+                        default=None,
+                        help="Number of components in the mixture of Gaussians.")
+    parser.add_argument("--iterations",
+                        type=int,
+                        default=None,
+                        help="Number of Expectation Maximization iterations.")
+    return parser.parse_args()
+
+
+def usage():
+    print("Usage help:\n"
+          "Single image segmentation:"
+          "python gmm_segmentation.py --first-image=example_data/beyonce.jpg --components=3 --iterations=8\n"
+          "\n"
+          "Image pair segmentation:"
+          "python gmm_segmentation.py --first-image=example_data/image_pairs/1_background.png --second-image=example_data/image_pairs/1_foreground.png --components=2 --iterations=10\n")
 
 
 def initialize_expectation_maximization(components, iterations):
@@ -166,10 +200,6 @@ def visualize_algorithm_state(image, responsibilities, i, iterations, means_list
         plt.xticks(x, x)
 
 
-def usage():
-    print("Incorrect usage. Example:\npython gmm_segmentation.py image_filepath num_components num_iterations")
-
-
 def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
     """
     implement equations X.1 and X.2 with part of equation X.3 in numerically stable expectation step derived in Hagiopol paper
@@ -243,34 +273,32 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
     return responsibilities
 
 
-def execute_segmentation(filepath, components, iterations):
+def execute_segmentation(matrix, components, iterations):
     """
-    :param filepath: path to input grayscale image
+    :param matrix: numpy array with data to be segmented using Expectation Maximization
     :param components: number of gaussian models to fit to the image
     :param iterations: number of iterations of the expectation maximization algorithm
     :param init_variance: initial variance for each model
     """
     # 1. Initialization Step
-    image = np.divide(np.float64(cv2.imread(filepath)), np.float64(255))  # read image from disk. normalize.
-    rows, cols, chans = image.shape
-    print("Starting Gaussian Mixture Model segmentation for", filepath)
-    image = image[:, :, 0]
+    rows, cols, chans = matrix.shape
+    matrix = matrix[:, :, 0]
     means_list, variances_list, stdevs_list, weights_list, log_likelihoods = initialize_expectation_maximization(components, iterations)
 
     for i in range(iterations):
         # 2. Expectation Step - see page 438 of Pattern Recognition and Machine Learning
-        responsibilities = compute_expectation_responsibilities(image, weights_list, means_list, stdevs_list)
+        responsibilities = compute_expectation_responsibilities(matrix, weights_list, means_list, stdevs_list)
         # 3. Inference Step - (skipped until the end for speed; see visualize_algorithm_state()).
         # 4. Maximization Step - see page 439 of Pattern Recognition and Machine Learning
         numPoints = np.sum(np.sum(responsibilities, axis=0), axis=0)  # compute Nk
         for k in range(components):
-            means_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], image), axis=0), axis=0), numPoints[k])
-            differences_from_mean = np.subtract(image, means_list[k])
+            means_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], matrix), axis=0), axis=0), numPoints[k])
+            differences_from_mean = np.subtract(matrix, means_list[k])
             variances_list[k] = np.divide(np.sum(np.sum(np.multiply(responsibilities[:, :, k], np.square(differences_from_mean)), axis=0), axis=0), numPoints[k])
             stdevs_list[k] = np.sqrt(variances_list[k])
             weights_list[k] = np.divide(numPoints[k], (rows * cols))
         # 5. Log Likelihood Step
-        log_likelihoods[i] = compute_log_likelihood_stable(image, weights_list, means_list, stdevs_list)
+        log_likelihoods[i] = compute_log_likelihood_stable(matrix, weights_list, means_list, stdevs_list)
         # Print algorithm state.
         print("ITERATION", i,
               "\nmeans", means_list,
@@ -278,23 +306,52 @@ def execute_segmentation(filepath, components, iterations):
               "\nweights", weights_list,
               "\nlog likelihood", log_likelihoods[i])
         # Visualize
-        visualize_algorithm_state(image, responsibilities, i, iterations, means_list, stdevs_list, log_likelihoods)
+        visualize_algorithm_state(matrix, responsibilities, i, iterations, means_list, stdevs_list, log_likelihoods)
     plt.show()
+
+
+def preprocess_images(filepath_1, filepath_2):
+    image_1 = np.divide(np.float64(cv2.imread(filepath_1)), np.float64(255))  # read image from disk. normalize.
+    if filepath_2 is not None:
+        image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
+        # TODO: convert from RGB to CIELAB
+        matrix = np.abs(np.subtract(image_1, image_2))
+        show_image((1, 1, 1),
+                   "Subtraction",
+                   matrix,
+                   vmin=np.min(matrix),
+                   vmax=np.max(matrix),
+                   open_new_window=True)
+        return matrix
+    else:
+        return image_1
 
 
 def main():
     # process user input and exit if invalid
-    if len(sys.argv) != 4:
+    args = get_arguments()
+    if args.first_image is None or args.components is None or args.iterations is None:
+        print("Incorrect usage.")
+        usage()
+        print("Exiting.")
+        exit()
+
+    filepath_1 = args.first_image
+    filepath_2 = args.second_image
+    components = args.components
+    iterations = args.iterations
+    if not os.path.exists(filepath_1):
+        print("First image not found.")
         usage()
         exit()
-    filepath = sys.argv[1]
-    components = int(sys.argv[2])
-    iterations = int(sys.argv[3])
-    if not os.path.exists(filepath):
+    if filepath_2 is not None and not os.path.exists(filepath_2):
+        print("Second image not found.")
         usage()
         exit()
+
+    matrix = preprocess_images(filepath_1, filepath_2)
     # main segmentation function that implements GMM
-    execute_segmentation(filepath, components, iterations)
+    execute_segmentation(matrix, components, iterations)
 
 
 if __name__ == "__main__":
