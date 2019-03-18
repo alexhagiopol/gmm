@@ -10,11 +10,11 @@ The project requires Python 3 and pip:
 ### Usage
 Command line parameter definitions:
 
-    -h, --help            show help message
-    --first-image Path to image file. Must be specified.
-    --second-image Path to image file. May or may not be specified.
-    --components Number of components in the mixture of Gaussians. Must be specified.
-    --iterations Number of Expectation Maximization iterations. Must be specified.
+    -h, --help      Show help message.
+    --first-image   Path to image file. Must be specified.
+    --second-image  Path to image file. May or may not be specified.
+    --components    Number of components in the mixture of Gaussians. Must be specified.
+    --iterations    Number of Expectation Maximization iterations. Must be specified.
 
 #### Example Commands
 Segment a single image:
