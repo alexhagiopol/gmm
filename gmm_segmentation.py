@@ -146,13 +146,13 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
 
 def execute_segmentation(matrix, components, iterations):
     """
-    :param matrix: numpy array with data to be segmented using Expectation Maximization
+    :param matrix: numpy array with data to be segmented using Expectation Maximization. NxNx1 matrix is assumed
     :param components: number of gaussian models to fit to the image
     :param iterations: number of iterations of the expectation maximization algorithm
     :param init_variance: initial variance for each model
     """
     # 1. Initialization Step
-    rows, cols, chans = matrix.shape
+    rows, cols = matrix.shape
     means_list, variances_list, stdevs_list, weights_list, log_likelihoods = initialize_expectation_maximization(components, iterations)
     init_means_list = means_list
     init_variances_list = variances_list
