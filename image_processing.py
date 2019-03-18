@@ -5,6 +5,7 @@ import numpy as np
 
 def preprocess_images(filepath_1, filepath_2):
     image_1 = np.divide(np.float64(cv2.imread(filepath_1)), np.float64(255))  # read image from disk. grayscale. normalize.
+    matrix = image_1[:, :, 0]  # use only first matrix layer in case user provides non-grayscale input. TODO: handle more gracefully
     if filepath_2 is not None:
         image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
         # TODO: convert from sRGB to CIELAB
@@ -17,4 +18,4 @@ def preprocess_images(filepath_1, filepath_2):
                    open_new_window=True)
         return matrix
     else:
-        return image_1
+        return matrix

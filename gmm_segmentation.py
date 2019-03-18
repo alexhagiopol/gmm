@@ -153,7 +153,6 @@ def execute_segmentation(matrix, components, iterations):
     """
     # 1. Initialization Step
     rows, cols, chans = matrix.shape
-    matrix = matrix[:, :, 0]
     means_list, variances_list, stdevs_list, weights_list, log_likelihoods = initialize_expectation_maximization(components, iterations)
     init_means_list = means_list
     init_variances_list = variances_list
