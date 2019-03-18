@@ -1,19 +1,29 @@
 ## Gaussian Mixture Models Tutorial
 
 ### Installation
+The project requires Python 3 and pip: 
 
     git clone https://github.com/alexhagiopol/gmm
     cd gmm
+    pip install -r requirements.txt
 
 ### Usage
+Command line parameter definitions:
 
-At present the program only supports grayscale images. Parameter definitions:
+    -h, --help            show help message
+    --first-image Path to image file. Must be specified.
+    --second-image Path to image file. May or may not be specified.
+    --components Number of components in the mixture of Gaussians. Must be specified.
+    --iterations Number of Expectation Maximization iterations. Must be specified.
 
-    python3 gmm_segmentation.py image_filepath num_components num_iterations
+#### Example Commands
+Segment a single image:
 
-Specific example:
+    python gmm_segmentation.py --first-image=example_data/beyonce.jpg --components=3 --iterations=8
 
-    python3 gmm_segmentation.py example_data/beyonce.jpg 3 8
+Segment the difference between a pair of images:
+
+    python gmm_segmentation.py --first-image=example_data/image_pairs/1_background.png --second-image=example_data/image_pairs/1_foreground.png --components=2 --iterations=5
 
 Example results:
     
