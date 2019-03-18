@@ -26,6 +26,6 @@ Segment the difference between a pair of images:
     python gmm_segmentation.py --first-image=example_data/image_pairs/1_background.png --second-image=example_data/image_pairs/1_foreground.png --components=2 --iterations=5
 
 ### Example results:
-Single image segmentation into 2 components over 8 iterations:
+Single image segmentation into 3 components (approximately "white", "black", and "grey") over 8 iterations:
     
 ![example_results](example_data/example_results.png)
