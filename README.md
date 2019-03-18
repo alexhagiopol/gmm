@@ -13,8 +13,8 @@ At present the program only supports grayscale images. Parameter definitions:
 
 Specific example:
 
-    python3 gmm_segmentation.py images/beyonce.jpg 3 8
+    python3 gmm_segmentation.py example_data/beyonce.jpg 3 8
 
 Example results:
     
-![example_results](images/example_results.png)
+![example_results](example_data/example_results.png)
