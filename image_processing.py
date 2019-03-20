@@ -60,11 +60,18 @@ def xyz_to_lab(xyz_matrix):
     # b computation
     b_matrix = 200 * (f_y_y_n_matrix - f_z_z_n_matrix)
 
-    return np.concatenate((L_matrix, a_matrix, b_matrix), axis=2)  # concatenate L, a, and b into a single LAB space image
+    return np.dstack((L_matrix, a_matrix, b_matrix))  # concatenate L, a, and b into a single LAB space image
 
 
-def cie94_distance_metric(lab_image_1, lab_image_2):
-    pass
+def cie76_distance_metric(lab_image_1, lab_image_2):
+    """
+    Compute the difference between two LAB images. See https://en.wikipedia.org/wiki/Color_difference
+    :param lab_image_1: NxNx3 numpy array
+    :param lab_image_2: NxNx3 numpy array
+    :return: NxNx1 numpy array
+    """
+    difference = lab_image_2 - lab_image_1
+    return np.sqrt(np.power(difference[:, :, 0], 2) + np.power(difference[:, :, 1], 2) + np.power(difference[:, :, 2], 2))
 
 
 def xyz_euclidean_distance_metric(lrgb_image_1, lrgb_image2):
@@ -81,6 +88,11 @@ def preprocess_images(filepath_1, filepath_2):
     matrix = image_1[:, :, 0]  # use only first matrix layer in case user provides non-grayscale input. TODO: handle more gracefully
     if filepath_2 is not None:
         image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
-        return xyz_euclidean_distance_metric(image_1, image_2)
+        cie76_difference = cie76_distance_metric(xyz_to_lab(lrgb_to_xyz(image_1)), xyz_to_lab(lrgb_to_xyz(image_2)))
+        visualization.show_image((1, 1, 1), "cie76 difference", cie76_difference, vmin=np.min(cie76_difference), vmax=np.max(cie76_difference))
+        cie76_segmentation = np.int32(cie76_difference > 2.3)  # "just perceptible difference" see https://en.wikipedia.org/wiki/Color_difference
+        visualization.show_image((1, 1, 1), "cie76 segmentation", cie76_segmentation, vmin=np.min(cie76_segmentation),
+                                 vmax=np.max(cie76_segmentation))
+        return (cie76_difference + np.min(cie76_difference)) / (np.max(cie76_difference) - np.min(cie76_difference))
     else:
         return matrix
