@@ -1,3 +1,4 @@
+import image_processing
 import matplotlib as mpl
 mpl.use('TkAgg')  # hack around bug in matplotlib. see https://stackoverflow.com/questions/21784641/installation-issue-with-matplotlib-python
 from matplotlib import pyplot as plt
@@ -18,6 +19,7 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
     :param vmax: float max value to display in single layer image
     :param cmap: colormap for display of single layer images
     """
+    img = image_processing.postprocess_segmentation_images(img)
     if open_new_window:
         plt.figure(figsize=(height, width))
     plt.subplot(*location)
