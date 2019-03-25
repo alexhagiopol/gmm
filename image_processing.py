@@ -96,3 +96,24 @@ def postprocess_segmentation_images(binary_image):
     binary_image = morphologically_open(binary_image, kernel)
     binary_image = morphologically_close(binary_image, kernel)
     return binary_image
+
+
+def compute_segmentation(data_matrix, responsibilities, means_list, stdevs_list):
+    # create segmentation image by assigning to each pixel the mean value associated with the model with greatest responsibility
+    rows, cols, components = responsibilities.shape
+    segmentation_output = np.zeros((rows, cols))
+    if components != 2:
+        segmentation_output_indices = responsibilities.argmax(axis=2)
+        for r in range(rows):
+            for c in range(cols):
+                segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
+    else:  # assume BG-FG segmentation
+        for r in range(rows):
+            for c in range(cols):
+                # BG responsibility > FG responsibility
+                if responsibilities[r, c, 0] > responsibilities[r, c, 1] and data_matrix[r, c] < (means_list[0] + stdevs_list[0]/2):
+                    segmentation_output[r, c] = 0
+                else:
+                    segmentation_output[r, c] = 1
+
+    return segmentation_output
