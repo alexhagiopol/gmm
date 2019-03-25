@@ -99,5 +99,6 @@ def preprocess_images(filepath_1, filepath_2):
 
 
 def postprocess_segmentation_images(binary_image):
-    kernel = np.ones((5, 5), np.uint8)
-    return cv2.dilate(cv2.erode(binary_image, kernel), kernel)  # morphological opening
+    return binary_image
+    #kernel = np.ones((5, 5), np.uint8)
+    #return cv2.dilate(cv2.erode(binary_image, kernel), kernel)  # morphological opening
