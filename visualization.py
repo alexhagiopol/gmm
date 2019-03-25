@@ -56,7 +56,7 @@ def visualize_algorithm_state(
     :param means_list: list of mean values, one for each component
     :param stdevs_list: list of stdev values, one for each component
     """
-    # create segmentation image by assigning to each pixel the mean value associated with the model with greatest prob
+    # create segmentation image by assigning to each pixel the mean value associated with the model with greatest responsibility
     rows, cols, components = responsibilities.shape
     segmentation_output = np.zeros((rows, cols))
     segmentation_output_indices = responsibilities.argmax(axis=2)

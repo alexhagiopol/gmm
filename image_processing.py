@@ -83,25 +83,6 @@ def xyz_euclidean_distance_metric(lrgb_image_1, lrgb_image2):
     return distance_metric / np.max(distance_metric)  # normalize
 
 
-def preprocess_images(filepath_1, filepath_2):
-    image_1 = np.divide(np.float64(cv2.imread(filepath_1)), np.float64(255))  # read image from disk. normalize.
-    matrix = image_1[:, :, 0]  # use only first matrix layer in case user provides non-grayscale input. TODO: handle more gracefully
-    if filepath_2 is not None:
-        image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
-
-        cie76_difference = cie76_distance_metric(xyz_to_lab(lrgb_to_xyz(image_1)), xyz_to_lab(lrgb_to_xyz(image_2)))
-        # TODO: find better place for below visualization
-        ''' 
-        visualization.show_image((1, 1, 1), "cie76 difference", cie76_difference, vmin=np.min(cie76_difference), vmax=np.max(cie76_difference), postprocessing=False)
-        cie76_segmentation = np.int32(cie76_difference > 2.3)  # "just perceptible difference" see https://en.wikipedia.org/wiki/Color_difference
-        visualization.show_image((1, 1, 1), "cie76 segmentation", cie76_segmentation, vmin=np.min(cie76_segmentation),
-                                 vmax=np.max(cie76_segmentation), postprocessing=False)
-        '''
-        return (cie76_difference + np.min(cie76_difference)) / (np.max(cie76_difference) - np.min(cie76_difference))
-    else:
-        return matrix
-
-
 def morphologically_open(binary_image, kernel):
     return cv2.dilate(cv2.erode(binary_image, kernel), kernel)
 
