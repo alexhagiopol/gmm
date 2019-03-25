@@ -102,11 +102,11 @@ def compute_segmentation(data_matrix, responsibilities, means_list, stdevs_list)
     # create segmentation image by assigning to each pixel the mean value associated with the model with greatest responsibility
     rows, cols, components = responsibilities.shape
     segmentation_output = np.zeros((rows, cols))
-    if components != 2:
-        segmentation_output_indices = responsibilities.argmax(axis=2)
-        for r in range(rows):
-            for c in range(cols):
-                segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
+    segmentation_output_indices = responsibilities.argmax(axis=2)
+    for r in range(rows):
+        for c in range(cols):
+            segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
+    """
     else:  # assume BG-FG segmentation
         for r in range(rows):
             for c in range(cols):
@@ -115,5 +115,6 @@ def compute_segmentation(data_matrix, responsibilities, means_list, stdevs_list)
                     segmentation_output[r, c] = 0
                 else:
                     segmentation_output[r, c] = 1
+    """
 
-    return segmentation_output
+    return postprocess_segmentation_images(segmentation_output)

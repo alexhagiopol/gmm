@@ -87,9 +87,9 @@ def initialize_expectation_maximization(filepath_1, filepath_2, components, iter
         #                         vmax=np.max(cie76_difference), postprocessing=False)
         cie76_segmentation_bg = np.int32(cie76_difference <= subtraction_threshold)
         cie76_segmentation_fg = np.int32(cie76_difference > subtraction_threshold)
-        # visualization.show_image((1, 1, 1), "CIE76 Segmentation w/ Threshold="+str(subtraction_threshold), cie76_segmentation_fg,
-        #                         vmin=np.min(cie76_segmentation_fg),
-        #                         vmax=np.max(cie76_segmentation_fg), postprocessing=False)
+        visualization.show_image((1, 1, 1), "CIE76 Segmentation w/ Threshold="+str(subtraction_threshold), cie76_segmentation_fg,
+                                 vmin=np.min(cie76_segmentation_fg),
+                                 vmax=np.max(cie76_segmentation_fg), postprocessing=False)
         # compute initial algorithm state
         rows = data_matrix.shape[0]
         cols = data_matrix.shape[1]
