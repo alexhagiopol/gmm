@@ -7,7 +7,7 @@ import numpy as np
 import scipy as sp
 
 
-def show_image(location, title, img, width=15, height=3, open_new_window=True, vmin=-5000.0, vmax=5000.0, cmap='gray', fontsize=10):
+def show_image(location, title, img, width=15, height=3, open_new_window=True, vmin=-5000.0, vmax=5000.0, cmap='gray', fontsize=10, postprocessing=True):
     """
     Displays an image in a multi-image display window
     :param location: (r,c,n) tuple where r is the # of display rows, c is the # of display cols, and n is the position for img
@@ -19,7 +19,8 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
     :param vmax: float max value to display in single layer image
     :param cmap: colormap for display of single layer images
     """
-    img = image_processing.postprocess_segmentation_images(img)
+    if postprocessing:
+        img = image_processing.postprocess_segmentation_images(img)
     if open_new_window:
         plt.figure(figsize=(height, width))
     plt.subplot(*location)
@@ -108,7 +109,8 @@ def visualize_algorithm_state(
 
         plt.subplot(3, 2, 2)
         plt.title("Final Segmented Image After " + str(iterations) + " Iterations", fontsize=10)
-        plt.imshow(segmentation_output, cmap='gray', vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
+        postprocessed_segmentation_output = image_processing.postprocess_segmentation_images(segmentation_output)
+        plt.imshow(postprocessed_segmentation_output, cmap='gray', vmin=np.min(segmentation_output), vmax=np.max(segmentation_output))
 
         plt.subplot(3, 2, 3)
         plt.title("Pixel Value Histogram", fontsize=10)

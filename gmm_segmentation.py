@@ -63,7 +63,7 @@ def initialize_expectation_maximization(components, iterations):
     """
     # initialize state variables of the algorithm
     init_variance = np.float64(10 / 255)  # initialized as explained in GMM tutorial paper
-    means = np.linspace(0, 1, components)  # assume component means are evenly spaced in pixel value domain
+    means = np.linspace(0, 1, components)  # assume initial component means are evenly spaced in pixel value domain
     variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
     stdevs = np.sqrt(variances)
     weights = np.ones(components)
