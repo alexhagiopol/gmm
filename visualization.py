@@ -69,6 +69,7 @@ def visualize_algorithm_state(
                segmentation_output,
                width=30,
                height=30,
+               fontsize=14,
                vmin=np.min(segmentation_output),
                vmax=np.max(segmentation_output),
                open_new_window=False,
@@ -87,10 +88,10 @@ def visualize_algorithm_state(
     curve_points_input = np.linspace(0, 1, 1000)
     for k in range(components):
         plt.subplot(2, iterations, 1 + iterations + i)
-        plt.title("Gaussian Mixture Curves", fontsize=10)
+        plt.title("Gaussian Model Curves", fontsize=10)
         plt.xlabel("Pixel Values")
         if i == 0:
-            plt.ylabel("Responsibility Value")
+            plt.ylabel("Responsibility Values")
         plt.ylim([0, 10])
         plt.plot(curve_points_input,
                  sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
