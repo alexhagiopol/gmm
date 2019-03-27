@@ -74,6 +74,36 @@ def cie76_distance_metric(lab_image_1, lab_image_2):
     return np.sqrt(np.power(difference[:, :, 0], 2) + np.power(difference[:, :, 1], 2) + np.power(difference[:, :, 2], 2))
 
 
+def cie94_distance_metric(lab_image_1, lab_image_2):
+    """
+    Compute the difference between two LAB images. See https://en.wikipedia.org/wiki/Color_difference
+    :param lab_image_1: NxNx3 numpy array
+    :param lab_image_2: NxNx3 numpy array
+    :return: NxNx1 numpy array
+    """
+    k_L = 1.0
+    k_C = 1.0
+    k_H = 1.0
+    K_1 = 0.045
+    K_2 = 0.015
+    L1 = lab_image_1[:, :, 0]
+    L2 = lab_image_2[:, :, 0]
+    a1 = lab_image_1[:, :, 1]
+    a2 = lab_image_2[:, :, 1]
+    b1 = lab_image_1[:, :, 2]
+    b2 = lab_image_2[:, :, 2]
+    deltaL = L1 - L2
+    C1 = np.sqrt(np.power(a1, 2) + np.power(b1, 2))
+    C2 = np.sqrt(np.power(a2, 2) + np.power(b2, 2))
+    deltaC = C1 - C2
+    deltaE = cie76_distance_metric(lab_image_1, lab_image_2)
+    deltaH_squared = np.power(deltaE, 2) - np.power(deltaL, 2) - np.power(deltaC, 2)  # represent in this form to avoid sqrt(-1)
+    S_L = 1.0
+    S_C = 1 + K_1 * C1
+    S_H = 1 + K_2 * C1
+    return np.sqrt(np.power(deltaL / (k_L * S_L), 2) + np.power(deltaC / (k_C * S_C), 2) + deltaH_squared / np.power((k_H * S_H), 2))
+
+
 def xyz_euclidean_distance_metric(lrgb_image_1, lrgb_image2):
     image_1_XYZ = lrgb_to_xyz(lrgb_image_1)
     image_2_XYZ = lrgb_to_xyz(lrgb_image2)
@@ -106,15 +136,4 @@ def compute_segmentation(data_matrix, responsibilities, means_list, stdevs_list)
     for r in range(rows):
         for c in range(cols):
             segmentation_output[r, c] = means_list[segmentation_output_indices[r, c]]
-    """
-    else:  # assume BG-FG segmentation
-        for r in range(rows):
-            for c in range(cols):
-                # BG responsibility > FG responsibility
-                if responsibilities[r, c, 0] > responsibilities[r, c, 1] and data_matrix[r, c] < (means_list[0] + stdevs_list[0]/2):
-                    segmentation_output[r, c] = 0
-                else:
-                    segmentation_output[r, c] = 1
-    """
-
     return postprocess_segmentation_images(segmentation_output)

@@ -72,33 +72,33 @@ def initialize_expectation_maximization(filepath_1, filepath_2, components, iter
     image_1 = np.divide(np.float64(cv2.imread(filepath_1)), np.float64(255))  # read image from disk. normalize.
     data_matrix = image_1[:, :, 0]  # use only first matrix layer in case user provides non-grayscale input.
     if filepath_2 is not None:
-        # given 2 images as input, data matrix is their CIE76 difference
+        # given 2 images as input, data matrix is their CIE94 difference
         image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
-        cie76_difference = \
-            image_processing.cie76_distance_metric(image_processing.xyz_to_lab(image_processing.lrgb_to_xyz(image_1)),
+        cie94_difference = \
+            image_processing.cie94_distance_metric(image_processing.xyz_to_lab(image_processing.lrgb_to_xyz(image_1)),
                                                    image_processing.xyz_to_lab(image_processing.lrgb_to_xyz(image_2)))
-        data_matrix = (cie76_difference + np.min(cie76_difference)) / (np.max(cie76_difference) - np.min(cie76_difference))  # normalize
+        data_matrix = (cie94_difference + np.min(cie94_difference)) / (np.max(cie94_difference) - np.min(cie94_difference))  # normalize
 
     # initialize algorithm state based on parameters
-    if filepath_2 is not None and subtraction_threshold is not None and components == 2:  # BG-FG thresholded subtraction initialization
+    if subtraction_threshold is not None and components == 2:  # BG-FG thresholded subtraction initialization
         # initialization based on subtraction threshold (only appropriate for 2 images input and 2 components)
         print("Initializing GMM state based on thresholded subtraction.")
-        # visualization.show_image((1, 1, 1), "CIE76 Difference Image", cie76_difference, vmin=np.min(cie76_difference),
-        #                         vmax=np.max(cie76_difference), postprocessing=False)
-        cie76_segmentation_bg = np.int32(cie76_difference <= subtraction_threshold)
-        cie76_segmentation_fg = np.int32(cie76_difference > subtraction_threshold)
-        visualization.show_image((1, 1, 1), "CIE76 Segmentation w/ Threshold="+str(subtraction_threshold), cie76_segmentation_fg,
-                                 vmin=np.min(cie76_segmentation_fg),
-                                 vmax=np.max(cie76_segmentation_fg), postprocessing=False)
+        # visualization.show_image((1, 1, 1), "CIE94 Difference Image", cie76_difference, vmin=np.min(cie76_difference),
+        #                         vmax=np.max(cie94_difference), postprocessing=False)
+        cie94_segmentation_bg = np.int32(cie94_difference <= subtraction_threshold)
+        cie94_segmentation_fg = np.int32(cie94_difference > subtraction_threshold)
+        visualization.show_image((1, 1, 1), "CIE94 Segmentation w/ Threshold="+str(subtraction_threshold), cie94_segmentation_fg,
+                                 vmin=np.min(cie94_segmentation_fg),
+                                 vmax=np.max(cie94_segmentation_fg), postprocessing=False)
         # compute initial algorithm state
         rows = data_matrix.shape[0]
         cols = data_matrix.shape[1]
-        fg_num_pixels = np.count_nonzero(cie76_segmentation_fg)
-        bg_num_pixels = np.count_nonzero(cie76_segmentation_bg)
-        fg_mean = np.sum(cie76_segmentation_fg * data_matrix) / fg_num_pixels
-        bg_mean = np.sum(cie76_segmentation_bg * data_matrix) / bg_num_pixels
-        fg_segmentation_array = np.reshape(cie76_segmentation_fg, (rows*cols))
-        bg_segmentation_array = np.reshape(cie76_segmentation_bg, (rows*cols))
+        fg_num_pixels = np.count_nonzero(cie94_segmentation_fg)
+        bg_num_pixels = np.count_nonzero(cie94_segmentation_bg)
+        fg_mean = np.sum(cie94_segmentation_fg * data_matrix) / fg_num_pixels
+        bg_mean = np.sum(cie94_segmentation_bg * data_matrix) / bg_num_pixels
+        fg_segmentation_array = np.reshape(cie94_segmentation_fg, (rows*cols))
+        bg_segmentation_array = np.reshape(cie94_segmentation_bg, (rows*cols))
         data_matrix_array = np.reshape(data_matrix, (rows*cols))
         fg_pixels_array = [data_matrix_array[i] for i in range(0, data_matrix_array.shape[0]) if fg_segmentation_array[i]]
         bg_pixels_array = [data_matrix_array[i] for i in range(0, data_matrix_array.shape[0]) if bg_segmentation_array[i]]
