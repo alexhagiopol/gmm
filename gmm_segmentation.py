@@ -128,7 +128,7 @@ def initialize_expectation_maximization(filepath_1, filepath_2, components, iter
 
 def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
     """
-    implement equations X.1 and X.2 with part of equation X.3 in numerically stable expectation step derived in Hagiopol paper
+    implement Equations 8 and 8 with part of Equation 10 in numerically stable expectation step derived in Hagiopol paper
     this function is used in both compute_log_likelihood_stable() and compute_expectation_responsibilities()
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
     :param weights_list: list of np.float64 weight values - one for each of K components
@@ -142,15 +142,15 @@ def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
     K = len(weights_list)
     N, M = intensities.shape
 
-    # implement equation X.1 derived in Hagiopol paper
+    # implement Equation 8 derived in Hagiopol paper
     P = np.zeros((N, M, K))
     for k in range(K):
         P[:, :, k] = np.log(weights_list[k]) + np.log(sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
 
-    # implement equation X.2 derived in Hagiopol paper
+    # implement Equation 9 derived in Hagiopol paper
     P_max = np.max(P, axis=2)
 
-    # implement expsum calculation used in equation X.3 derived in Hagiopol paper
+    # implement expsum calculation used in Equation 10 derived in Hagiopol paper
     expsum = np.zeros((N, M))
     for k in range(K):
         expsum += np.exp(P[:, :, k] - P_max)
@@ -173,7 +173,7 @@ def compute_log_likelihood_stable(intensities, weights_list, means_list, stdevs_
 
 def compute_expectation_responsibilities(intensities, weights_list, means_list, stdevs_list):
     """
-    implement equations X.1 through X.3 in numerically stable expectation step derived in Hagiopol paper
+    implement Equations 8 through 10 in numerically stable expectation step derived in Hagiopol paper
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
     :param weights_list: list of np.float64 weight values - one for each of K components
     :param means_list: list of np.float64 mean values - one for each of K components
@@ -186,11 +186,11 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
     N, M = intensities.shape
     ln_responsibilities = np.zeros((N, M, K))
 
-    # equations X.1 and X.2 of Expectation step implemented in compute_expsum_stable() due to commonality with
+    # Equations 8 and 9 of Expectation step implemented in compute_expsum_stable() due to commonality with
     # log likelihood calculation
     expsum, P, P_max = compute_expsum_stable(intensities, weights_list, means_list, stdevs_list)
 
-    # implement equation X.3 derived in Hagiopol paper
+    # implement Equation 10 derived in Hagiopol paper
     ln_expsum = np.log(expsum)
     for k in range(K):
         ln_responsibilities[:, :, k] = P[:, :, k] - (P_max + ln_expsum)
