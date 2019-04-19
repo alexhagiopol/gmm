@@ -67,7 +67,7 @@ def visualize_algorithm_state(
     show_image((2, iterations, 1 + i),
                "Segmentation #" + str(i),
                segmentation_output,
-               width=30,
+               width=60,
                height=30,
                fontsize=14,
                vmin=np.min(segmentation_output),
@@ -75,15 +75,6 @@ def visualize_algorithm_state(
                open_new_window=False,
                postprocessing=False)
 
-    """
-    # Visualization 2: Show distribution of pixel color values.
-    ax = plt.subplot(3, iterations, 1 + iterations + i)
-    plt.title("Pixel Value Histogram", fontsize=10)
-    if i == 0:
-        plt.ylabel("# Occurrences")
-    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
-    plt.hist(image.flatten(), bins=128)
-    """
     # Visualization 2: Show Gaussian curves of each model.
     curve_points_input = np.linspace(0, 1, 1000)
     for k in range(components):
@@ -91,11 +82,16 @@ def visualize_algorithm_state(
         plt.title("Gaussian Model Curves", fontsize=10)
         plt.xlabel("Pixel Values")
         if i == 0:
-            plt.ylabel("Responsibility Values")
+            plt.ylabel("Responsibility")
         plt.ylim([0, 10])
-        plt.plot(curve_points_input,
-                 sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
-                 color=(means_list[k], means_list[k], means_list[k]))
+        if means_list[k] < 0.99:  # use mean value to color the line; if the mean is too high the line will be invisible (white)
+            plt.plot(curve_points_input,
+                     sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
+                     color=(means_list[k], means_list[k], means_list[k]))
+        else:  # therefore if the line will be invisible, make it a dotted line instead
+            plt.scatter(curve_points_input[1:1000:40],
+                        sp.stats.norm.pdf(curve_points_input[1:1000:40], means_list[k], stdevs_list[k]),
+                        color=(0, 0, 0), marker='.')
 
     '''
     Visualizations 3 and 4 created only on the final Expectation Maximization iteration to summarize the results.
@@ -127,20 +123,31 @@ def visualize_algorithm_state(
         plt.subplot(3, 2, 5)
         plt.title("Initial Gaussian Mixture Curves", fontsize=10)
         plt.xlabel("Pixel Values")
-        plt.ylabel("Probability")
-        #init_means, init_variances, init_stdevs, init_weights, init_log_likelihoods = initialize_expectation_maximization(components, iterations)
+        plt.ylabel("Responsibility")
         for k in range(components):
-            plt.plot(curve_points_input,
-                     sp.stats.norm.pdf(curve_points_input, init_means_list[k], init_stdevs_list[k]),
-                     color=(init_means_list[k], init_means_list[k], init_means_list[k]))
+            if init_means_list[k] < 0.99:  # use mean value to color the line; if the mean is too high the line will be invisible (white)
+                plt.plot(curve_points_input,
+                         sp.stats.norm.pdf(curve_points_input, init_means_list[k], init_stdevs_list[k]),
+                         color=(init_means_list[k], init_means_list[k], init_means_list[k]))
+            else:  # therefore if the line will be invisible, make it a dotted line instead
+                plt.scatter(curve_points_input[1:1000:40],
+                         sp.stats.norm.pdf(curve_points_input[1:1000:40], init_means_list[k], init_stdevs_list[k]),
+                         color=(0, 0, 0), marker='.')
 
         plt.subplot(3, 2, 6)
         plt.title("Final Gaussian Mixture Curves After " + str(iterations) + " Iterations", fontsize=10)
         plt.xlabel("Pixel Values")
         for k in range(components):
-            plt.plot(curve_points_input,
-                     sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
-                     color=(means_list[k], means_list[k], means_list[k]))
+            if means_list[k] < 0.99:  # use mean value to color the line; if the mean is too high the line will be invisible (white)
+                plt.plot(curve_points_input,
+                         sp.stats.norm.pdf(curve_points_input, means_list[k], stdevs_list[k]),
+                         color=(means_list[k], means_list[k], means_list[k]))
+            else:  # therefore if the line will be invisible, make it a dotted line instead
+                plt.scatter(curve_points_input[1:1000:40],
+                         sp.stats.norm.pdf(curve_points_input[1:1000:40], means_list[k], stdevs_list[k]),
+                         color=(0, 0, 0), marker='.')
+
+        plt.tight_layout(pad=0.8, w_pad=0.8, h_pad=0.8)
 
         # Visualization 4: On final iteration, show plot of total log likelihood
         plt.figure(2)
