@@ -1,5 +1,9 @@
 ## Gaussian Mixture Models Tutorial
 
+## Introduction
+
+This repository is the accompanying software for my mathematics and programming tutorial paper for Gaussian Mixture Models. See [https://alexhagiopol.com/portfolio/gaussian-mixture-models-tutorial/](https://alexhagiopol.com/portfolio/gaussian-mixture-models-tutorial/). 
+
 ### Installation
 The project requires Python 3 and pip: 
 
