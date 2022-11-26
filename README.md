@@ -27,11 +27,11 @@ Command line parameter definitions:
 #### Example Commands
 Segment a single image:
 
-    python gmm_segmentation.py --first-image=example_data/beyonce.jpg --components=3 --iterations=8
+    python3 gmm_segmentation.py --first-image=example_data/beyonce.jpg --components=3 --iterations=8
 
 Segment the difference between a pair of images (reproduce Figure 7 in paper):
 
-    python gmm_segmentation.py --first-image=example_data/image_pairs/2_background.png --second-image=example_data/image_pairs/2_foreground.png --components=2 --iterations=6 --subtraction-threshold=5.0
+    python3 gmm_segmentation.py --first-image=example_data/image_pairs/2_background.png --second-image=example_data/image_pairs/2_foreground.png --components=2 --iterations=6 --subtraction-threshold=5.0
 
 ### Example results:
 Single image segmentation into 3 components (approximately "white", "black", and "grey") over 8 iterations:
