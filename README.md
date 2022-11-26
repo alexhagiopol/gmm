@@ -2,13 +2,17 @@
 
 ## Introduction
 
-This repository is the accompanying software for my mathematics and programming tutorial paper for Gaussian Mixture Models. See [https://alexhagiopol.com/portfolio/gaussian-mixture-models-tutorial/](https://alexhagiopol.com/portfolio/gaussian-mixture-models-tutorial/). 
+This repository is the accompanying software for my mathematics and programming tutorial paper for Gaussian Mixture Models. See [https://alexhagiopol.github.io/content/gmm_tutorial.pdf](https://alexhagiopol.github.io/content/gmm_tutorial.pdf). 
 
 ### Installation
-The project requires Python 3 and pip: 
+Below commands tested on Ubuntu 22.04: 
 
     git clone https://github.com/alexhagiopol/gmm
     cd gmm
+    sudo apt install git
+    sudo apt install pip3
+    sudo apt install python3-tk
+    sudo apt install python3-pil python3-pil.imagetk
     pip install -r requirements.txt
 
 ### Usage
