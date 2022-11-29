@@ -1,10 +1,9 @@
-import visualization
-import copy
 import cv2
 import numpy as np
+import typing
 
 
-def lrgb_to_xyz(lrgb_matrix):
+def lrgb_to_xyz(lrgb_matrix: np.ndarray) -> np.array:
     """
     Convert normalized linear RGB image in numpy form to normalized XYZ. See https://www.cs.rit.edu/~ncs/color/t_convert.html#RGB%20to%20XYZ%20&%20XYZ%20to%20RGB.
     :param lrgb_matrix: NxNx3 numpy array
@@ -19,7 +18,7 @@ def lrgb_to_xyz(lrgb_matrix):
     return xyz_matrix
 
 
-def xyz_to_lab(xyz_matrix):
+def xyz_to_lab(xyz_matrix: np.ndarray) -> np.ndarray:
     """
     Convert normalized XYZ image in numpy form to normalized LAB. See https://www.cs.rit.edu/~ncs/color/t_convert.html#RGB%20to%20XYZ%20&%20XYZ%20to%20RGB.
     :param srgb_matrix: NxNx3 numpy array
@@ -63,7 +62,7 @@ def xyz_to_lab(xyz_matrix):
     return np.dstack((L_matrix, a_matrix, b_matrix))  # concatenate L, a, and b into a single LAB space image
 
 
-def cie76_distance_metric(lab_image_1, lab_image_2):
+def cie76_distance_metric(lab_image_1: np.ndarray, lab_image_2: np.ndarray) -> np.ndarray:
     """
     Compute the difference between two LAB images. See https://en.wikipedia.org/wiki/Color_difference
     :param lab_image_1: NxNx3 numpy array
@@ -74,7 +73,7 @@ def cie76_distance_metric(lab_image_1, lab_image_2):
     return np.sqrt(np.power(difference[:, :, 0], 2) + np.power(difference[:, :, 1], 2) + np.power(difference[:, :, 2], 2))
 
 
-def cie94_distance_metric(lab_image_1, lab_image_2):
+def cie94_distance_metric(lab_image_1: np.ndarray, lab_image_2: np.ndarray) -> np.ndarray:
     """
     Compute the difference between two LAB images. See https://en.wikipedia.org/wiki/Color_difference
     :param lab_image_1: NxNx3 numpy array
@@ -104,7 +103,7 @@ def cie94_distance_metric(lab_image_1, lab_image_2):
     return np.sqrt(np.power(deltaL / (k_L * S_L), 2) + np.power(deltaC / (k_C * S_C), 2) + deltaH_squared / np.power((k_H * S_H), 2))
 
 
-def xyz_euclidean_distance_metric(lrgb_image_1, lrgb_image2):
+def xyz_euclidean_distance_metric(lrgb_image_1: np.ndarray, lrgb_image2: np.ndarray) -> np.ndarray:
     image_1_XYZ = lrgb_to_xyz(lrgb_image_1)
     image_2_XYZ = lrgb_to_xyz(lrgb_image2)
     xyz_subtraction = np.subtract(image_1_XYZ, image_2_XYZ)
@@ -113,22 +112,22 @@ def xyz_euclidean_distance_metric(lrgb_image_1, lrgb_image2):
     return distance_metric / np.max(distance_metric)  # normalize
 
 
-def morphologically_open(binary_image, kernel):
+def morphologically_open(binary_image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     return cv2.dilate(cv2.erode(binary_image, kernel), kernel)
 
 
-def morphologically_close(binary_image, kernel):
+def morphologically_close(binary_image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     return cv2.erode(cv2.dilate(binary_image, kernel), kernel)
 
 
-def postprocess_segmentation_images(binary_image):
+def postprocess_segmentation_images(binary_image: np.ndarray) -> np.ndarray:
     kernel = np.ones((5, 5), np.uint8)
     binary_image = morphologically_open(binary_image, kernel)
     binary_image = morphologically_close(binary_image, kernel)
     return binary_image
 
 
-def compute_segmentation(data_matrix, responsibilities, means_list, stdevs_list):
+def compute_segmentation(responsibilities: np.ndarray, means_list: typing.List[float]) -> np.ndarray:
     # create segmentation image by assigning to each pixel the mean value associated with the model with greatest responsibility
     rows, cols, components = responsibilities.shape
     segmentation_output = np.zeros((rows, cols))

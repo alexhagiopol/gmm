@@ -14,11 +14,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 import os
 import scipy as sp
-import sys
 from scipy.stats import norm
+import typing
 
 
-def get_arguments():
+def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Example implementation of Gaussian Mixture Models segmentation. "
                     "Single image input: segment the image based on grayscale intensity. "
@@ -46,7 +46,7 @@ def get_arguments():
     return parser.parse_args()
 
 
-def usage():
+def usage() -> None:
     print("Usage help:\n"
           "Single image segmentation:"
           "python gmm_segmentation.py --first-image=example_data/beyonce.jpg --components=3 --iterations=8\n"
@@ -55,7 +55,13 @@ def usage():
           "python gmm_segmentation.py --first-image=example_data/image_pairs/1_background.png --second-image=example_data/image_pairs/1_foreground.png --components=2 --iterations=10\n")
 
 
-def initialize_expectation_maximization(filepath_1, filepath_2, components, iterations, subtraction_threshold):
+def initialize_expectation_maximization(
+        filepath_1: str,
+        filepath_2: str,
+        components: int,
+        iterations: int, 
+        subtraction_threshold: float) -> \
+            typing.Tuple[np.ndarray, typing.List[float], typing.List[float], typing.List[float], typing.List[float], typing.List[float]]:
     """
     perform initialization step
     :param filepath_1: path to first image (required)
@@ -83,8 +89,6 @@ def initialize_expectation_maximization(filepath_1, filepath_2, components, iter
     if subtraction_threshold is not None and components == 2:  # BG-FG thresholded subtraction initialization
         # initialization based on subtraction threshold (only appropriate for 2 images input and 2 components)
         print("Initializing GMM state based on thresholded subtraction.")
-        # visualization.show_image((1, 1, 1), "CIE94 Difference Image", cie76_difference, vmin=np.min(cie76_difference),
-        #                         vmax=np.max(cie94_difference), postprocessing=False)
         cie94_segmentation_bg = np.int32(cie94_difference <= subtraction_threshold)
         cie94_segmentation_fg = np.int32(cie94_difference > subtraction_threshold)
         visualization.show_image((1, 1, 1), "CIE94 Segmentation w/ Threshold="+str(subtraction_threshold), cie94_segmentation_fg,
@@ -126,7 +130,12 @@ def initialize_expectation_maximization(filepath_1, filepath_2, components, iter
     return data_matrix, init_means, init_variances, init_stdevs, init_weights, init_log_likelihoods
 
 
-def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
+def compute_expsum_stable(
+        intensities: np.ndarray, 
+        weights_list: typing.List[float], 
+        means_list: typing.List[float], 
+        stdevs_list: typing.List[float]) -> \
+            typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     implement Equations 8 and 8 with part of Equation 10 in numerically stable expectation step derived in Hagiopol paper
     this function is used in both compute_log_likelihood_stable() and compute_expectation_responsibilities()
@@ -157,7 +166,11 @@ def compute_expsum_stable(intensities, weights_list, means_list, stdevs_list):
     return expsum, P, P_max
 
 
-def compute_log_likelihood_stable(intensities, weights_list, means_list, stdevs_list):
+def compute_log_likelihood_stable(
+        intensities: np.ndarray,
+        weights_list: typing.List[float],
+        means_list: typing.List[float],
+        stdevs_list: typing.List[float]) -> float:
     """
     implement log likelihood calculation derived in Hagiopol paper
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
@@ -171,7 +184,11 @@ def compute_log_likelihood_stable(intensities, weights_list, means_list, stdevs_
     return np.sum(np.sum(ln_inner_sum, axis=0), axis=0)  # outer sum of log likelihood equation
 
 
-def compute_expectation_responsibilities(intensities, weights_list, means_list, stdevs_list):
+def compute_expectation_responsibilities(
+        intensities: np.ndarray,
+        weights_list: typing.List[float],
+        means_list: typing.List[float],
+        stdevs_list: typing.List[float]) -> np.ndarray:
     """
     implement Equations 8 through 10 in numerically stable expectation step derived in Hagiopol paper
     :param intensities: NxM single layer matrix with 0-1 normalized np.float64 values.
@@ -199,14 +216,14 @@ def compute_expectation_responsibilities(intensities, weights_list, means_list, 
     return responsibilities
 
 
-def execute_expectation_maximization(data_matrix,
-                                     components,
-                                     iterations,
-                                     init_means_list,
-                                     init_variances_list,
-                                     init_stdevs_list,
-                                     init_weights_list,
-                                     init_log_likelihoods_list):
+def execute_expectation_maximization(data_matrix: np.ndarray,
+                                     components: int,
+                                     iterations: int,
+                                     init_means_list: typing.List[float],
+                                     init_variances_list: typing.List[float],
+                                     init_stdevs_list: typing.List[float],
+                                     init_weights_list: typing.List[float],
+                                     init_log_likelihoods_list: typing.List[float]) -> None:
     """
     :param matrix: numpy array with data to be segmented using Expectation Maximization. NxNx1 matrix is assumed
     :param components: number of gaussian models to fit to the image
@@ -259,7 +276,7 @@ def execute_expectation_maximization(data_matrix,
     plt.show()
 
 
-def main():
+def main() -> None:
     # process user input and exit if invalid
     args = get_arguments()
     if args.first_image is None or args.components is None or args.iterations is None:

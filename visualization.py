@@ -5,9 +5,20 @@ from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
 import scipy as sp
+import typing
 
-
-def show_image(location, title, img, width=15, height=3, open_new_window=True, vmin=-5000.0, vmax=5000.0, cmap='gray', fontsize=10, postprocessing=False):
+def show_image(
+        location: typing.Tuple[int, int, int], 
+        title: str, 
+        img: np.ndarray, 
+        width: int = 15, 
+        height: int = 3,
+        open_new_window: bool = True,
+        vmin: float =-5000.0,
+        vmax: float = 5000.0,
+        cmap: str = 'gray',
+        fontsize: int = 10,
+        postprocessing: bool = False) -> None:
     """
     Displays an image in a multi-image display window
     :param location: (r,c,n) tuple where r is the # of display rows, c is the # of display cols, and n is the position for img
@@ -36,19 +47,19 @@ def show_image(location, title, img, width=15, height=3, open_new_window=True, v
 
 
 def visualize_algorithm_state(
-        image,
-        responsibilities,
-        components,
-        i,
-        iterations,
-        means_list,
-        stdevs_list,
-        log_likelihoods_list,
-        init_means_list,
-        init_variances_list,
-        init_stdevs_list,
-        init_weights_list,
-        init_log_likelihoods):
+        image: np.ndarray,
+        responsibilities: np.ndarray,
+        components: int,
+        i: int,
+        iterations: int,
+        means_list: typing.List[float],
+        stdevs_list: typing.List[float],
+        log_likelihoods_list: typing.List[float],
+        init_means_list: typing.List[float],
+        init_variances_list: typing.List[float],
+        init_stdevs_list: typing.List[float],
+        init_weights_list: typing.List[float],
+        init_log_likelihoods: typing.List[float]) -> None:
     """
     :param image: ndarray with grayscale image
     :param responsibilities: NxMxK matrix of responsibility values as defined in equation 9.23
@@ -58,7 +69,7 @@ def visualize_algorithm_state(
     :param stdevs_list: list of stdev values, one for each component
     """
 
-    segmentation_output = image_processing.compute_segmentation(image, responsibilities, means_list, stdevs_list)
+    segmentation_output = image_processing.compute_segmentation(responsibilities, means_list)
     '''
     Visualizations 1 and 2 are subplots of the same figure to show the evolution of the state of the algorithm.
     '''
