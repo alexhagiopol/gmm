@@ -9,10 +9,14 @@ import image_processing
 
 import argparse
 import copy
+import cProfile
 import cv2
+import io
 import numpy as np
 from matplotlib import pyplot as plt
 import os
+import pstats
+#from pstats import SortKey
 import scipy as sp
 from scipy.stats import norm
 import typing
@@ -43,6 +47,10 @@ def get_arguments() -> argparse.Namespace:
                         type=float,
                         default=None,
                         help="FG-BG subtraction threshold. Optional. 2.3 is just perceptible difference according to CIE")
+    parser.add_argument("--visualization",
+                    type=int,
+                    default=1,
+                    help="Toggle display of charts and graphs showing algorithm state.")
     return parser.parse_args()
 
 
@@ -60,7 +68,8 @@ def initialize_expectation_maximization(
         filepath_2: str,
         components: int,
         iterations: int, 
-        subtraction_threshold: float) -> \
+        subtraction_threshold: float,
+        visualization_enabled: bool) -> \
             typing.Tuple[np.ndarray, typing.List[float], typing.List[float], typing.List[float], typing.List[float], typing.List[float]]:
     """
     perform initialization step
@@ -91,9 +100,10 @@ def initialize_expectation_maximization(
         print("Initializing GMM state based on thresholded subtraction.")
         cie94_segmentation_bg = np.int32(cie94_difference <= subtraction_threshold)
         cie94_segmentation_fg = np.int32(cie94_difference > subtraction_threshold)
-        visualization.show_image((1, 1, 1), "CIE94 Segmentation w/ Threshold="+str(subtraction_threshold), cie94_segmentation_fg,
-                                 vmin=np.min(cie94_segmentation_fg),
-                                 vmax=np.max(cie94_segmentation_fg), postprocessing=False)
+        if (visualization_enabled):
+            visualization.show_image((1, 1, 1), "CIE94 Segmentation w/ Threshold="+str(subtraction_threshold), cie94_segmentation_fg,
+                                    vmin=np.min(cie94_segmentation_fg),
+                                    vmax=np.max(cie94_segmentation_fg), postprocessing=False)
         # compute initial algorithm state
         rows = data_matrix.shape[0]
         cols = data_matrix.shape[1]
@@ -223,7 +233,8 @@ def execute_expectation_maximization(data_matrix: np.ndarray,
                                      init_variances_list: typing.List[float],
                                      init_stdevs_list: typing.List[float],
                                      init_weights_list: typing.List[float],
-                                     init_log_likelihoods_list: typing.List[float]) -> None:
+                                     init_log_likelihoods_list: typing.List[float],
+                                     visualization_enabled: bool) -> None:
     """
     :param matrix: numpy array with data to be segmented using Expectation Maximization. NxNx1 matrix is assumed
     :param components: number of gaussian models to fit to the image
@@ -259,21 +270,23 @@ def execute_expectation_maximization(data_matrix: np.ndarray,
               "\nweights", weights_list,
               "\nlog likelihood", log_likelihoods_list[i])
         # Visualize
-        visualization.visualize_algorithm_state(
-            data_matrix,
-            responsibilities,
-            components,
-            i,
-            iterations,
-            means_list,
-            stdevs_list,
-            log_likelihoods_list,
-            init_means_list,
-            init_variances_list,
-            init_stdevs_list,
-            init_weights_list,
-            init_log_likelihoods_list)
-    plt.show()
+        if (visualization_enabled):
+            visualization.visualize_algorithm_state(
+                data_matrix,
+                responsibilities,
+                components,
+                i,
+                iterations,
+                means_list,
+                stdevs_list,
+                log_likelihoods_list,
+                init_means_list,
+                init_variances_list,
+                init_stdevs_list,
+                init_weights_list,
+                init_log_likelihoods_list)
+    if (visualization_enabled):    
+        plt.show()
 
 
 def main() -> None:
@@ -284,12 +297,12 @@ def main() -> None:
         usage()
         print("Exiting.")
         exit()
-
     filepath_1 = args.first_image
     filepath_2 = args.second_image
     components = args.components
     iterations = args.iterations
     subtraction_threshold = args.subtraction_threshold
+    visualization_enabled = bool(args.visualization)
     if not os.path.exists(filepath_1):
         print("First image not found.")
         usage()
@@ -302,15 +315,15 @@ def main() -> None:
         print("Number of components must be 2 or greater. Exiting.")
         exit()
 
+    profiler = cProfile.Profile()
+    profiler.enable()
     data_matrix, \
         init_means_list, \
         init_variances_list, \
         init_stdevs_list, \
         init_weights_list, \
         init_log_likelihoods_list = \
-        initialize_expectation_maximization(filepath_1, filepath_2, components, iterations, subtraction_threshold)
-
-    # main segmentation function that implements GMM
+        initialize_expectation_maximization(filepath_1, filepath_2, components, iterations, subtraction_threshold, visualization_enabled)
     execute_expectation_maximization(data_matrix,
                                      components,
                                      iterations,
@@ -318,8 +331,13 @@ def main() -> None:
                                      init_variances_list,
                                      init_stdevs_list,
                                      init_weights_list,
-                                     init_log_likelihoods_list)
-
+                                     init_log_likelihoods_list,
+                                     visualization_enabled)
+    profiler.disable()
+    profiler_stats = pstats.Stats(profiler)
+    num_stats_display = 10
+    print("EM algorithm complete. Displaying profiling statistics for top", num_stats_display, "longest running functions:")
+    profiler_stats.sort_stats(pstats.SortKey.TIME).print_stats(num_stats_display)
 
 if __name__ == "__main__":
     main()
