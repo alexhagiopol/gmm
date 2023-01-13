@@ -340,4 +340,5 @@ def main() -> None:
     profiler_stats.sort_stats(pstats.SortKey.TIME).print_stats(num_stats_display)
 
 if __name__ == "__main__":
+    #  run C++ function here
     main()
