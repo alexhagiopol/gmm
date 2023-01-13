@@ -14,3 +14,4 @@ if __name__ == "__main__":
     os.chdir(current_path)
     import accelerated_functions_build.accelerated_functions as af
     result = af.add(random.randint(0, 1000), random.randint(0, 1000))
+    print("Python code: received result", result)
