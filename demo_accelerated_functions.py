@@ -7,7 +7,7 @@ if __name__ == "__main__":
     build_path = os.path.join(current_path, build_folder_name)
     if not os.path.exists(build_path):
         os.makedirs(build_path)
-        os.chdir(build_path)
+    os.chdir(build_path)
     subprocess.check_call(["cmake", ".."])
     subprocess.check_call(["make"])
     os.chdir(current_path)
