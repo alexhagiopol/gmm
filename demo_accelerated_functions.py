@@ -13,5 +13,8 @@ if __name__ == "__main__":
     subprocess.check_call(["make"])
     os.chdir(current_path)
     import accelerated_functions_build.accelerated_functions as af
-    result = af.add(random.randint(0, 1000), random.randint(0, 1000))
+    input1 = random.randint(0, 1000)
+    input2 = random.randint(0, 1000)
+    print("Python code: sending inputs", input1, input2)
+    result = af.add(input1, input2)
     print("Python code: received result", result)
