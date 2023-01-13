@@ -21,7 +21,6 @@ import scipy as sp
 from scipy.stats import norm
 import typing
 
-
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Example implementation of Gaussian Mixture Models segmentation. "
@@ -340,5 +339,4 @@ def main() -> None:
     profiler_stats.sort_stats(pstats.SortKey.TIME).print_stats(num_stats_display)
 
 if __name__ == "__main__":
-    #  run C++ function here
     main()
