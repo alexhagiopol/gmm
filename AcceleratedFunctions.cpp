@@ -7,3 +7,7 @@ namespace accelerated_functions {
         return i + j;
     }
 }
+
+PYBIND11_MODULE(accelerated_functions_module, module) {
+    module.def("add", &accelerated_functions::add, "A function that adds two numbers");
+}
