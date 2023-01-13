@@ -1,8 +1,12 @@
 #include <pybind11/pybind11.h>
 #include <iostream>
+#include <string>
 
 int add(int i, int j) {
-    std::cout << "Executing accelerated_functions::add()..." << std::endl;
+    const int result = i + j;
+    const std::string strFunctionSignature = "add(" + std::to_string(i) + "," + std::to_string(j) + ")";
+    const std::string strResult = "=" + std::to_string(result);
+    std::cout << "Executing C++ implementation: " << strFunctionSignature << strResult << std::endl;
     return i + j;
 }
 

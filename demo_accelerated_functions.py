@@ -1,4 +1,5 @@
 import os
+import random
 import subprocess
 
 if __name__ == "__main__":
@@ -12,5 +13,4 @@ if __name__ == "__main__":
     subprocess.check_call(["make"])
     os.chdir(current_path)
     import accelerated_functions_build.accelerated_functions as af
-    result = af.add(1, 1)
-    print("result=", result)
+    result = af.add(random.randint(0, 1000), random.randint(0, 1000))
