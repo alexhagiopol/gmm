@@ -22,7 +22,7 @@ if __name__ == "__main__":
     result = af.add(input1, input2)
     print("Python code: received result", result)
     print("************************")
-    print("Python code: modify() demo:")
+    print("Python code: fill() demo:")
     input3 = np.ndarray(shape=(2,2), dtype=np.float64)
     input3.setflags(write=True)
     input4 = np.float64(random.randint(1, 1000))
