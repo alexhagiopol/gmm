@@ -6,30 +6,31 @@
 
 using EigenRowMajMatrixXd = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,Eigen::RowMajor>;
 
+/// see compute_expsum_stable() in gmm_segmentation.py for documentation
 void computeExpsumStable(
-        Eigen::Ref<EigenRowMajMatrixXd> intensities, 
+        const Eigen::Ref<EigenRowMajMatrixXd> intensities, 
         pybind11::list weights,
         pybind11::list means,
-        pybind11::list stdevs) {
+        pybind11::list stdevs,
+        Eigen::Ref<EigenRowMajMatrixXd> expsum,
+        Eigen::Ref<EigenRowMajMatrixXd> P,
+        Eigen::Ref<EigenRowMajMatrixXd> P_max
+        ) {
     // TODO
 }
 
+/// example function to test Python<->PyBind<->C++
 void fill(Eigen::Ref<EigenRowMajMatrixXd> matrix, double value) {
-    std::cout << "C++ code: executing fill()" << std::endl;
     for (int r = 0; r < matrix.rows(); r++) {
         for (int c = 0; c < matrix.cols(); c++) {
-            std::cout << "C++ code: modifying " << matrix(r, c) << " to " << std::to_string(value) << std::endl; 
             matrix(r, c) = value;
         }
     }
 }
 
+/// example function to test Python<->PyBind<->C++
 int add(int i, int j) {
-    const int result = i + j;
-    const std::string strFunctionSignature = "add(" + std::to_string(i) + "," + std::to_string(j) + ")";
-    const std::string strResult = "=" + std::to_string(result);
-    std::cout << "C++ code: executing " << strFunctionSignature << strResult << std::endl;
-    return result;
+    return i + j;
 }
 
 PYBIND11_MODULE(accelerated_functions, module) {
