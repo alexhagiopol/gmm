@@ -6,6 +6,14 @@
 
 using EigenRowMajMatrixXd = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,Eigen::RowMajor>;
 
+void computeExpsumStable(
+        Eigen::Ref<EigenRowMajMatrixXd> intensities, 
+        pybind11::list weights,
+        pybind11::list means,
+        pybind11::list stdevs) {
+    // TODO
+}
+
 void fill(Eigen::Ref<EigenRowMajMatrixXd> matrix, double value) {
     std::cout << "C++ code: executing fill()" << std::endl;
     for (int r = 0; r < matrix.rows(); r++) {
