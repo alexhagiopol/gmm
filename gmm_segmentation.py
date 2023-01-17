@@ -129,28 +129,28 @@ class GMM_Estimator:
         expsum = np.zeros((N, M), dtype=np.float64)
         P = np.zeros((N, M, K), dtype=np.float64)
         P_max = np.zeros((N, M), dtype=np.float64)
+        P_2D = np.zeros((N, M*K), dtype=np.float64)
 
         # execute accelerated C++ implementation
         if self.fast_math_enabled:
-            P_2D = np.zeros((N, M*K), dtype=np.float64)
             for k in range(0, K):
                 P_2D[:, M*k : M*(k+1)] = P[:, :, k]
             self.fast_math_module.computeExpsumStable(intensities, weights_list, means_list, stdevs_list, expsum, P_2D, P_max)
             for k in range(0, K):
                 P[:, :, k] = P_2D[:, M*k : M*(k+1)]
+      
         # execute default Python implementation
         else:
-            # implement Equation 8 derived in Hagiopol paper
+            # implement Equation 9 derived in Hagiopol paper
             for k in range(K):
                 P[:, :, k] = np.log(weights_list[k]) + np.log(sp.stats.norm.pdf(intensities, means_list[k], stdevs_list[k]))
 
-            # implement Equation 9 derived in Hagiopol paper
+            # implement Equation 10 derived in Hagiopol paper
             P_max = np.max(P, axis=2)
 
-            # implement expsum calculation used in Equation 10 derived in Hagiopol paper
+            # implement expsum calculation used in Equation 11 derived in Hagiopol paper
             for k in range(K):
                 expsum += np.exp(P[:, :, k] - P_max)
-            
         return expsum, P, P_max
 
 
