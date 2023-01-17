@@ -30,12 +30,13 @@ void computeExpsumStable(
         // implement https://en.wikipedia.org/wiki/Gaussian_function
         const double multiplier = 1 / (stdev * std::sqrt(2 * std::numbers::pi));
         const double base = std::exp(-1 / (2 * stdev * stdev));
+        const int indexOffset = k*numRows;
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
                 const double intensity = intensities(r, c);
                 const double exponent = std::pow(intensity - mean, 2);
                 const double gaussPdfValue = multiplier * std::pow(base, exponent);
-                P_2D(r, c + k*numCols) = logWeightK + std::log(gaussPdfValue);
+                P_2D(r + indexOffset, c) = logWeightK + std::log(gaussPdfValue);
             }
         }
     }
@@ -44,7 +45,8 @@ void computeExpsumStable(
         for (int c = 0; c < numCols; c++) {
             double maxValue = std::numeric_limits<double>::min();
             for (int k = 0; k < K; k++) {
-                const double currentValue = P_2D(r, c + k*numCols);
+                const int indexOffset = k*numRows;
+                const double currentValue = P_2D(r + indexOffset, c);
                 if (currentValue > maxValue) maxValue = currentValue;
             }
             P_max(r, c) = maxValue;
@@ -52,9 +54,10 @@ void computeExpsumStable(
     }
     // implement expsum calculation used in Equation 11 derived in Hagiopol paper
     for (int k = 0; k < K; k++) {
+        const int indexOffset = k*numRows;
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
-                expsum(r, c) += std::exp(P_2D(r, c + numCols*k) - P_max(r, c)); 
+                expsum(r, c) += std::exp(P_2D(r + indexOffset, c) - P_max(r, c)); 
             }
         }
     }
