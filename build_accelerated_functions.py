@@ -10,7 +10,7 @@ def compile():
     if not os.path.exists(build_path):
         os.makedirs(build_path)
     os.chdir(build_path)
-    subprocess.check_call(["cmake", ".."])
+    subprocess.check_call(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."])
     subprocess.check_call(["make"])
     os.chdir(current_path)
 
