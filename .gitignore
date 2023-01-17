@@ -2,3 +2,6 @@
 **/.idea
 **/.DS_Store
 **/__pycache__
+**/.vscode
+**/build
+**/accelerated_functions_build
