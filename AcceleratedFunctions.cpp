@@ -34,6 +34,7 @@ int add(int i, int j) {
 }
 
 PYBIND11_MODULE(accelerated_functions, module) {
-    module.def("add", &add, "A function that adds two numbers");
-    module.def("fill", &fill, "Set every value of a matrix to a given value");
+    module.def("add", &add, "A function that adds two numbers.");
+    module.def("computeExpsumStable", &computeExpsumStable, "See compute_expsum_stable() in gmm_segmentation.py for documentation.");
+    module.def("fill", &fill, "Set every value of a matrix to a given value.");
 }

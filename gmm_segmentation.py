@@ -51,6 +51,7 @@ class GMM_Estimator:
         # initialize data_matrix based on number of images provided
         image_1 = np.divide(np.float64(cv2.imread(filepath_1)), np.float64(255))  # read image from disk. normalize.
         data_matrix = image_1[:, :, 0]  # use only first matrix layer in case user provides non-grayscale input.
+        data_matrix = data_matrix.astype(np.float64)
         if filepath_2 is not None:
             # given 2 images as input, data matrix is their CIE94 difference
             image_2 = np.divide(np.float64(cv2.imread(filepath_2)), np.float64(255))  # read image from disk. normalize.
@@ -89,11 +90,11 @@ class GMM_Estimator:
 
         else:  # arbitrary initialization based on even component spacing assumption
             print("Initializing GMM state based on evenly spaced component assumption.")
-            init_means = np.linspace(0, 1, components)  # assume initial component means are evenly spaced in pixel value domain
+            init_means = [x for x in np.linspace(0, 1, components)]  # assume initial component means are evenly spaced in pixel value domain
             init_variance = np.float64(10 / 255)  # initialized as explained in GMM tutorial paper
-            init_variances = np.float64(np.ones(components)) * init_variance  # initial variance is 10/255 - quite small
-            init_stdevs = np.sqrt(init_variances)
-            init_weights = np.ones(components)
+            init_variances = [x for x in np.float64(np.ones(components)) * init_variance]  # initial variance is 10/255 - quite small
+            init_stdevs = [x for x in np.sqrt(init_variances)]
+            init_weights = [x for x in np.ones(components)]
 
         # log likelihoods do not have the concept of initialization; simply create a list to be populated by EM algorithm
         init_log_likelihoods = np.zeros(iterations)
@@ -125,12 +126,19 @@ class GMM_Estimator:
         """
         K = len(weights_list)
         N, M = intensities.shape
-        P = np.zeros((N, M, K))
-        P_max = np.zeros((N, M))
-        expsum = np.zeros((N, M))
+        expsum = np.zeros((N, M), dtype=np.float64)
+        P = np.zeros((N, M, K), dtype=np.float64)
+        P_max = np.zeros((N, M), dtype=np.float64)
 
+        # execute accelerated C++ implementation
         if self.fast_math_enabled:
-            pass
+            P_2D = np.zeros((N, M*K), dtype=np.float64)
+            for k in range(0, K):
+                P_2D[:, M*k : M*(k+1)] = P[:, :, k]
+            self.fast_math_module.computeExpsumStable(intensities, weights_list, means_list, stdevs_list, expsum, P_2D, P_max)
+            for k in range(0, K):
+                P[:, :, k] = P_2D[:, M*k : M*(k+1)]
+        # execute default Python implementation
         else:
             # implement Equation 8 derived in Hagiopol paper
             for k in range(K):
