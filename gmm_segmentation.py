@@ -20,13 +20,13 @@ from scipy.stats import norm
 import typing
 
 class GMM_Estimator:
-    def __init__(self, visualization_enabled: bool, fast_math_enabled: bool):
+    def __init__(self, visualization_enabled: bool, precompiled_num_threads: int):
         self.visualization_enabled = visualization_enabled
-        self.fast_math_enabled = fast_math_enabled
+        self.precompiled_num_threads = precompiled_num_threads
         self.fast_math_module = None
-        if (self.fast_math_enabled):
-            import accelerated_functions_build.accelerated_functions as af
-            self.fast_math_module = af
+        if (self.precompiled_num_threads):
+            import precompiled_functions_build.precompiled_functions as precompiled_module
+            self.fast_math_module = precompiled_module
 
     def initialize_expectation_maximization(
             self,
@@ -131,11 +131,11 @@ class GMM_Estimator:
         P_max = np.zeros((N, M), dtype=np.float64)
         P_2D = np.zeros((N*K, M), dtype=np.float64)  # unrolled into 2D matrix 
 
-        # execute accelerated C++ implementation
-        if self.fast_math_enabled:
+        # execute precompiled C++ implementation
+        if self.precompiled_num_threads:
             for k in range(0, K):
                 P_2D[N*k : N*(k+1), :] = P[:, :, k]
-            self.fast_math_module.computeExpsumStable(intensities, weights_list, means_list, stdevs_list, expsum, P_2D, P_max)
+            self.fast_math_module.computeExpsumStable(intensities, weights_list, means_list, stdevs_list, expsum, P_2D, P_max, self.precompiled_num_threads)
             for k in range(0, K):
                 P[:, :, k] = P_2D[N*k : N*(k+1), :]
       
@@ -299,10 +299,10 @@ def get_arguments() -> argparse.Namespace:
                     type=int,
                     default=1,
                     help="Toggle display of charts and graphs showing algorithm state.")
-    parser.add_argument("--fast-math",
+    parser.add_argument("--precompiled-num-threads",
                 type=int,
                 default=0,
-                help="Use pre-compiled math functions. Must run build_accelerated_functions.py before enabling this.")
+                help="0: Use pure Python implementation. 1-N: Call pre-compiled custom C++ functions using up to this many threads. Must run build_precompiled_functions.py first to compile them.")
     return parser.parse_args()
 
 
@@ -329,9 +329,7 @@ def main() -> None:
     iterations = args.iterations
     subtraction_threshold = args.subtraction_threshold
     visualization_enabled = bool(args.visualization)
-    fast_math_enabled = bool(args.fast_math)
-    if fast_math_enabled:
-        import accelerated_functions_build.accelerated_functions as af
+    precompiled_num_threads = args.precompiled_num_threads
     if not os.path.exists(filepath_1):
         print("First image not found.")
         usage()
@@ -346,7 +344,7 @@ def main() -> None:
 
     profiler = cProfile.Profile()
     profiler.enable()
-    gmm_object = GMM_Estimator(visualization_enabled, fast_math_enabled)
+    gmm_object = GMM_Estimator(visualization_enabled, precompiled_num_threads)
     data_matrix, \
         init_means_list, \
         init_variances_list, \

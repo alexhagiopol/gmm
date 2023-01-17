@@ -5,7 +5,7 @@ import subprocess
 
 def compile():
     current_path = os.path.dirname(__file__)
-    build_folder_name = "accelerated_functions_build"
+    build_folder_name = "precompiled_functions_build"
     build_path = os.path.join(current_path, build_folder_name)
     if not os.path.exists(build_path):
         os.makedirs(build_path)
@@ -15,7 +15,7 @@ def compile():
     os.chdir(current_path)
 
 def test():
-    import accelerated_functions_build.accelerated_functions as af
+    import precompiled_functions_build.precompiled_functions as af
     input1 = random.randint(1, 1000)
     input2 = random.randint(1, 1000)
     result = af.add(input1, input2)

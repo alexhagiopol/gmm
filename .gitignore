@@ -4,4 +4,4 @@
 **/__pycache__
 **/.vscode
 **/build
-**/accelerated_functions_build
+**/precompiled_functions_build
