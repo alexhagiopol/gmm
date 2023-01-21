@@ -81,31 +81,13 @@ void computeExpsumStable(
         rowSlicesEndpoints[i] = rowSlicesEndpoints[i-1] + numRows / numThreads;
     }
     rowSlicesEndpoints[numThreads] = numRows;
-    std::vector<std::thread> threadPool(numThreads);
+    std::vector<std::jthread> threadPool(numThreads);
     for (int i = 0; i < numThreads; i++) {
-        threadPool[i] = std::thread(computeExpsumStableWorker, intensities, weightsList, meansList, stdevsList, expsum, P_2D, P_max, rowSlicesEndpoints[i], rowSlicesEndpoints[i+1]);
+        threadPool[i] = std::jthread(computeExpsumStableWorker, intensities, weightsList, meansList, stdevsList, expsum, P_2D, P_max, rowSlicesEndpoints[i], rowSlicesEndpoints[i+1]);
     }
-    for (int i = 0; i < numThreads; i++) {
-        threadPool[i].join();
-    }
-}
-
-/// example function to test Python<->PyBind<->C++
-void fill(Eigen::Ref<EigenRowMajMatrixXd> matrix, double value) {
-    for (int r = 0; r < matrix.rows(); r++) {
-        for (int c = 0; c < matrix.cols(); c++) {
-            matrix(r, c) = value;
-        }
-    }
-}
-
-/// example function to test Python<->PyBind<->C++
-int add(int i, int j) {
-    return i + j;
+    // std::jthreads call .join() upon destruction
 }
 
 PYBIND11_MODULE(precompiled_functions, module) {
-    module.def("add", &add, "A function that adds two numbers.");
     module.def("computeExpsumStable", &computeExpsumStable, "See compute_expsum_stable() in gmm_segmentation.py for documentation.");
-    module.def("fill", &fill, "Set every value of a matrix to a given value.");
 }
