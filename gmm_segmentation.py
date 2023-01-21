@@ -129,10 +129,10 @@ class GMM_Estimator:
         expsum = np.zeros((N, M), dtype=np.float64)
         P = np.zeros((N, M, K), dtype=np.float64)
         P_max = np.zeros((N, M), dtype=np.float64)
-        P_2D = np.zeros((N*K, M), dtype=np.float64)  # unrolled into 2D matrix 
 
         # execute precompiled C++ implementation
         if self.precompiled_num_threads:
+            P_2D = np.zeros((N*K, M), dtype=np.float64)  # unroll P into 2D matrix 
             for k in range(0, K):
                 P_2D[N*k : N*(k+1), :] = P[:, :, k]
             self.fast_math_module.computeExpsumStable(intensities, weights_list, means_list, stdevs_list, expsum, P_2D, P_max, self.precompiled_num_threads)
